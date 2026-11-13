@@ -31,6 +31,7 @@ const CAR_GROUND_Y: float = 0.0
 const CAR_JUMP_HEIGHT: float = 14.0
 const JUMP_CAR_SCALE: float = 2.6
 const OIL_FUEL_COST: float = 10.0
+const ACCELERATE_SOUND_COOLDOWN: float = 1.5
 
 enum State { DRIVING, SPINNING, JUMPING, DEAD }
 
@@ -46,6 +47,7 @@ var _spinning: bool = false
 var _state: State = State.DRIVING
 var _jump_elapsed: float = 0.0
 var _landing_in_progress: bool = false
+var _last_accelerate_sound_time: float = -INF
 
 func _ready() -> void:
 	add_to_group("player")
@@ -64,6 +66,15 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		GameState.speed = 0.0
 		return
+	var accelerate_held: bool = Input.is_action_pressed("accelerate")
+	var brake_held: bool = Input.is_action_pressed("brake")
+	AudioManager.update_engine(speed, MAX_SPEED, accelerate_held, brake_held, int(_state))
+	AudioManager.set_braking(brake_held, speed)
+	if accelerate_held and speed < MAX_SPEED * 0.4:
+		var now: float = Time.get_ticks_msec() / 1000.0
+		if now - _last_accelerate_sound_time >= ACCELERATE_SOUND_COOLDOWN:
+			AudioManager.play(&"accelerate", -4.0)
+			_last_accelerate_sound_time = now
 	if _state == State.DRIVING and Input.is_action_just_pressed("jump") and GameState.jump_charges > 0:
 		_start_jump()
 	if _state != State.JUMPING:
@@ -140,6 +151,7 @@ func _start_spin(other: Node2D, should_push: bool) -> void:
 	_state = State.SPINNING
 	_invulnerable = true
 	Input.vibrate_handheld(100)
+	AudioManager.play(&"sideswipe", 0.0, 0.05)
 	speed *= SIDE_SWIPE_SPEED_RATIO
 	GameState.speed = speed
 	if should_push and is_instance_valid(other):
@@ -184,7 +196,9 @@ func _start_hard_crash() -> void:
 	if _invulnerable or _state == State.JUMPING:
 		return
 	_invulnerable = true
-	Input.vibrate_handheld(180)
+	if OS.has_feature("mobile"):
+		Input.vibrate_handheld(120)
+	AudioManager.play(&"crash")
 	speed = 0.0
 	GameState.speed = speed
 	if GameState.is_fuel_mode():
@@ -204,6 +218,7 @@ func _start_oil_effect() -> void:
 	if GameState.is_fuel_mode():
 		GameState.fuel -= OIL_FUEL_COST
 	Input.vibrate_handheld(100)
+	AudioManager.play(&"oil")
 	await get_tree().create_timer(INVULNERABLE_DURATION).timeout
 	_invulnerable = false
 
@@ -212,6 +227,7 @@ func _start_jump() -> void:
 	_jump_elapsed = 0.0
 	_landing_in_progress = false
 	GameState.consume_jump_charge()
+	AudioManager.play(&"jump")
 	$Hitbox.set_deferred("monitoring", false)
 	$Hitbox.set_deferred("monitorable", false)
 	$Hitbox.set_deferred("collision_layer", 0)
@@ -259,3 +275,4 @@ func _finish_jump() -> void:
 		_sprite.scale = Vector2(BASE_SPRITE_SCALE, BASE_SPRITE_SCALE * 0.85)
 		squash_tween.tween_property(_sprite, "scale", Vector2(BASE_SPRITE_SCALE, BASE_SPRITE_SCALE), LANDING_SQUASH_DURATION)
 		GameState.request_camera_shake(LANDING_SHAKE_AMOUNT)
+		AudioManager.play(&"land")

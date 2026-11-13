@@ -289,3 +289,10 @@ offset_top = 98.0
 offset_right = 165.0
 offset_bottom = 132.0
 text = "MENU"
+
+[node name="Audio" type="Button" parent="PauseOverlay"]
+offset_left = 15.0
+offset_top = 136.0
+offset_right = 165.0
+offset_bottom = 170.0
+text = "SFX ON"

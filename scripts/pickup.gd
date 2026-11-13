@@ -16,4 +16,5 @@ func _on_area_entered(area: Area2D) -> void:
 	if area.is_in_group("player_hitbox") and GameState.game_phase == "PLAYING":
 		GameState.fuel = 100.0
 		GameState.add_score(SCORE_VALUE)
+		AudioManager.play(&"pickup", 0.0, 0.03)
 		queue_free()

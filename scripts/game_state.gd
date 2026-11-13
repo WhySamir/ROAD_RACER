@@ -38,6 +38,7 @@ const ALL_MODES: Array = [
 
 var level: DifficultyConfig.Level = DifficultyConfig.Level.MEDIUM
 var mode: DifficultyConfig.Mode = DifficultyConfig.Mode.FUEL
+var muted: bool = false
 var high_score: int = 0
 var game_over_new_best: bool = false
 
@@ -91,6 +92,12 @@ func set_mode(value: DifficultyConfig.Mode) -> void:
 	_save_to_disk()
 	_sync_high_score()
 	selection_changed.emit()
+
+func set_muted(value: bool) -> void:
+	if muted == value:
+		return
+	muted = value
+	_save_to_disk()
 
 func get_preset() -> Dictionary:
 	return DifficultyConfig.get_preset(level)
@@ -222,6 +229,7 @@ func _load_from_disk() -> bool:
 		return false
 	level = _level_from_index(int(config.get_value(SETTINGS_SECTION, "level", 1)))
 	mode = _mode_from_index(int(config.get_value(SETTINGS_SECTION, "mode", 0)))
+	muted = bool(config.get_value(SETTINGS_SECTION, "muted", false))
 	for slot_level: DifficultyConfig.Level in ALL_LEVELS:
 		for slot_mode: DifficultyConfig.Mode in ALL_MODES:
 			var slot: String = _slot_key(slot_level, slot_mode)
@@ -236,6 +244,7 @@ func _save_to_disk() -> void:
 	var config: ConfigFile = ConfigFile.new()
 	config.set_value(SETTINGS_SECTION, "level", int(level))
 	config.set_value(SETTINGS_SECTION, "mode", int(mode))
+	config.set_value(SETTINGS_SECTION, "muted", muted)
 	for slot_level: DifficultyConfig.Level in ALL_LEVELS:
 		for slot_mode: DifficultyConfig.Mode in ALL_MODES:
 			var slot: String = _slot_key(slot_level, slot_mode)

@@ -18,6 +18,7 @@ extends CanvasLayer
 @onready var _game_over_actions: Control = $GameOverActions
 @onready var _pause_button: Button = $PauseButton
 @onready var _pause_overlay: Control = $PauseOverlay
+@onready var _pause_audio_button: Button = $PauseOverlay/Audio
 @onready var _game_over_info: Control = $GameOverInfo
 @onready var _game_over_mode: Label = $GameOverInfo/ModeLevel
 @onready var _game_over_score: Label = $GameOverInfo/Score
@@ -55,12 +56,14 @@ func _ready() -> void:
 	$PauseButton.pressed.connect(_on_pause_pressed)
 	$PauseOverlay/Resume.pressed.connect(_on_resume_pressed)
 	$PauseOverlay/Menu.pressed.connect(_on_menu_pressed)
+	$PauseOverlay/Audio.pressed.connect(_on_pause_audio_pressed)
 	_on_score_changed(GameState.score)
 	_on_best_changed(GameState.high_score)
 	_on_distance_changed(GameState.distance)
 	_on_speed_changed(GameState.speed)
 	_on_fuel_changed(GameState.fuel)
 	_on_phase_changed(GameState.game_phase)
+	_refresh_audio_button()
 	_on_jump_meter_changed(GameState.jump_meter)
 	_on_jump_charges_changed(GameState.jump_charges)
 	_apply_safe_area()
@@ -224,20 +227,36 @@ func _exit_tree() -> void:
 	_kill_all_heart_tweens()
 
 func _on_retry_pressed() -> void:
+	AudioManager.play(&"click")
+	AudioManager.stop_all()
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
 func _on_menu_pressed() -> void:
+	AudioManager.play(&"click")
+	AudioManager.stop_all()
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 func _on_pause_pressed() -> void:
+	AudioManager.play(&"click")
 	get_tree().paused = true
+	AudioManager.set_paused(true)
 	_pause_button.visible = false
 	_pause_overlay.visible = true
 	$PauseOverlay/Resume.grab_focus()
 
 func _on_resume_pressed() -> void:
+	AudioManager.play(&"click")
 	_pause_overlay.visible = false
 	get_tree().paused = false
+	AudioManager.set_paused(false)
 	_pause_button.visible = true
+
+func _on_pause_audio_pressed() -> void:
+	AudioManager.play(&"click")
+	AudioManager.set_muted(not GameState.muted)
+	_refresh_audio_button()
+
+func _refresh_audio_button() -> void:
+	_pause_audio_button.text = "SFX OFF" if GameState.muted else "SFX ON"

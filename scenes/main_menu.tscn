@@ -85,6 +85,13 @@ grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("9_theme")
 
+[node name="MuteButton" type="Button" parent="UI/Root"]
+offset_left = 164.0
+offset_top = 6.0
+offset_right = 218.0
+offset_bottom = 34.0
+text = "SFX ON"
+
 [node name="MainScreen" type="Control" parent="UI/Root"]
 layout_mode = 1
 anchors_preset = 15

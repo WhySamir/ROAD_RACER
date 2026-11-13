@@ -163,6 +163,7 @@ func _process_countdown(delta: float) -> void:
 	if _countdown_value <= 0:
 		GameState.set_phase("PLAYING")
 		_spawn_timer = PLAYING_SPAWN_DELAY
+		AudioManager.start_engine()
 	else:
 		_countdown_timer = COUNTDOWN_STEP_SECONDS
 

@@ -12,6 +12,7 @@ const FOCUS_COLOR: Color = Color("ffd23f")
 @onready var _main_screen: Control = $UI/Root/MainScreen
 @onready var _level_screen: Control = $UI/Root/LevelScreen
 @onready var _scores_screen: Control = $UI/Root/ScoresScreen
+@onready var _mute_button: Button = $UI/Root/MuteButton
 @onready var _level_label: Label = $UI/Root/MainScreen/Panel/Content/Level
 @onready var _level_buttons: Array[Button] = [
 	$UI/Root/LevelScreen/Panel/Content/Easy,
@@ -37,10 +38,13 @@ var _screen: String = "MAIN"
 
 func _ready() -> void:
 	get_tree().paused = false
+	AudioManager.stop_all()
 	GameState.speed = MENU_ROAD_SPEED
 	_connect_buttons()
+	_mute_button.pressed.connect(_toggle_mute)
 	GameState.selection_changed.connect(_refresh_selection)
 	_refresh_selection()
+	_refresh_mute()
 	_show_screen("MAIN", false)
 	for index: int in _decorative_cars.size():
 		_decorative_cars[index].position.y = DECORATIVE_TOP - float(index * 125)
@@ -176,9 +180,18 @@ func _confirm_reset() -> void:
 	_close_reset_dialog()
 
 func _button_feedback(button: Button) -> void:
+	AudioManager.play(&"click")
 	button.pivot_offset = button.size * 0.5
 	var tween: Tween = create_tween()
 	tween.tween_property(button, "scale", Vector2(PRESS_SCALE, PRESS_SCALE), PRESS_DURATION)
 	tween.tween_property(button, "scale", Vector2.ONE, PRESS_DURATION)
 	if OS.has_feature("mobile"):
 		Input.vibrate_handheld(15)
+
+func _toggle_mute() -> void:
+	AudioManager.play(&"click")
+	AudioManager.set_muted(not GameState.muted)
+	_refresh_mute()
+
+func _refresh_mute() -> void:
+	_mute_button.text = "SFX OFF" if GameState.muted else "SFX ON"
