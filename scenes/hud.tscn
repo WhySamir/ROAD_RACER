@@ -1,8 +1,11 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/hud.gd" id="1_hud"]
+[ext_resource type="Texture2D" path="res://assets/heart_full.png" id="2_heart_full"]
+[ext_resource type="Texture2D" path="res://assets/heart_empty.png" id="3_heart_empty"]
 
 [node name="HUD" type="CanvasLayer"]
+process_mode = 3
 script = ExtResource("1_hud")
 
 [node name="Panel" type="Control" parent="."]
@@ -15,17 +18,26 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Score" type="Label" parent="Panel"]
-offset_left = 6.0
+offset_left = 104.0
 offset_top = 6.0
-offset_right = 80.0
+offset_right = 154.0
 offset_bottom = 20.0
 theme_override_font_sizes/font_size = 8
 text = "SCORE 000000"
 
-[node name="Best" type="Label" parent="Panel"]
-offset_left = 82.0
-offset_top = 6.0
+[node name="ModeLevel" type="Label" parent="Panel"]
+offset_left = 6.0
+offset_top = 20.0
 offset_right = 156.0
+offset_bottom = 32.0
+theme_override_colors/font_color = Color(0.72, 0.74, 0.8, 1)
+theme_override_font_sizes/font_size = 7
+text = "FUEL · MEDIUM"
+
+[node name="Best" type="Label" parent="Panel"]
+offset_left = 104.0
+offset_top = 20.0
+offset_right = 154.0
 offset_bottom = 20.0
 theme_override_font_sizes/font_size = 8
 text = "BEST 000000"
@@ -68,6 +80,53 @@ offset_right = 80.0
 offset_bottom = 20.0
 theme_override_font_sizes/font_size = 8
 text = "FUEL 100"
+
+[node name="LivesMargin" type="MarginContainer" parent="."]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 104.0
+offset_bottom = 30.0
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+mouse_filter = 2
+
+[node name="LivesBar" type="HBoxContainer" parent="LivesMargin"]
+theme_override_constants/separation = 2
+
+[node name="Life1" type="TextureRect" parent="LivesMargin/LivesBar"]
+custom_minimum_size = Vector2(18, 18)
+texture_filter = 1
+texture = ExtResource("2_heart_full")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Life2" type="TextureRect" parent="LivesMargin/LivesBar"]
+custom_minimum_size = Vector2(18, 18)
+texture_filter = 1
+texture = ExtResource("2_heart_full")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Life3" type="TextureRect" parent="LivesMargin/LivesBar"]
+custom_minimum_size = Vector2(18, 18)
+texture_filter = 1
+texture = ExtResource("2_heart_full")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Life4" type="TextureRect" parent="LivesMargin/LivesBar"]
+custom_minimum_size = Vector2(18, 18)
+texture_filter = 1
+texture = ExtResource("2_heart_full")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Life5" type="TextureRect" parent="LivesMargin/LivesBar"]
+custom_minimum_size = Vector2(18, 18)
+texture_filter = 1
+texture = ExtResource("2_heart_full")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="JumpBar" type="Control" parent="Panel"]
 offset_left = 158.0
@@ -120,3 +179,113 @@ offset_bottom = 240.0
 theme_override_font_sizes/font_size = 28
 text = "3"
 horizontal_alignment = 1
+
+[node name="LifePopup" type="Label" parent="."]
+visible = false
+offset_left = 6.0
+offset_top = 58.0
+offset_right = 90.0
+offset_bottom = 74.0
+theme_override_colors/font_color = Color(1, 0.824, 0.247, 1)
+theme_override_font_sizes/font_size = 9
+text = "+1 LIFE"
+
+[node name="GameOverInfo" type="Control" parent="."]
+visible = false
+
+[node name="ModeLevel" type="Label" parent="GameOverInfo"]
+offset_left = 24.0
+offset_top = 142.0
+offset_right = 200.0
+offset_bottom = 160.0
+theme_override_colors/font_color = Color(1, 0.824, 0.247, 1)
+theme_override_font_sizes/font_size = 10
+text = "FUEL · MEDIUM"
+horizontal_alignment = 1
+
+[node name="Score" type="Label" parent="GameOverInfo"]
+offset_left = 24.0
+offset_top = 164.0
+offset_right = 200.0
+offset_bottom = 180.0
+text = "SCORE 0"
+horizontal_alignment = 1
+
+[node name="Distance" type="Label" parent="GameOverInfo"]
+offset_left = 24.0
+offset_top = 182.0
+offset_right = 200.0
+offset_bottom = 198.0
+text = "DISTANCE 0m"
+horizontal_alignment = 1
+
+[node name="Best" type="Label" parent="GameOverInfo"]
+offset_left = 24.0
+offset_top = 200.0
+offset_right = 200.0
+offset_bottom = 216.0
+text = "BEST 0"
+horizontal_alignment = 1
+
+[node name="NewBest" type="Label" parent="GameOverInfo"]
+offset_left = 24.0
+offset_top = 218.0
+offset_right = 200.0
+offset_bottom = 234.0
+theme_override_colors/font_color = Color(1, 0.824, 0.247, 1)
+text = "NEW BEST!"
+horizontal_alignment = 1
+
+[node name="PauseButton" type="Button" parent="."]
+visible = false
+offset_left = 192.0
+offset_top = 6.0
+offset_right = 218.0
+offset_bottom = 34.0
+text = "II"
+
+[node name="GameOverActions" type="Control" parent="."]
+visible = false
+
+[node name="Retry" type="Button" parent="GameOverActions"]
+offset_left = 37.0
+offset_top = 250.0
+offset_right = 187.0
+offset_bottom = 284.0
+text = "RETRY"
+
+[node name="Menu" type="Button" parent="GameOverActions"]
+offset_left = 37.0
+offset_top = 290.0
+offset_right = 187.0
+offset_bottom = 324.0
+text = "MENU"
+
+[node name="PauseOverlay" type="Panel" parent="."]
+visible = false
+offset_left = 22.0
+offset_top = 130.0
+offset_right = 202.0
+offset_bottom = 280.0
+
+[node name="Title" type="Label" parent="PauseOverlay"]
+offset_left = 10.0
+offset_top = 14.0
+offset_right = 170.0
+offset_bottom = 36.0
+text = "PAUSED"
+horizontal_alignment = 1
+
+[node name="Resume" type="Button" parent="PauseOverlay"]
+offset_left = 15.0
+offset_top = 52.0
+offset_right = 165.0
+offset_bottom = 86.0
+text = "RESUME"
+
+[node name="Menu" type="Button" parent="PauseOverlay"]
+offset_left = 15.0
+offset_top = 98.0
+offset_right = 165.0
+offset_bottom = 132.0
+text = "MENU"

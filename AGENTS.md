@@ -31,9 +31,24 @@ scenes/
   player.tscn            # CharacterBody2D, car_player_red at scale 2, z_index 10
 scripts/
   game_state.gd          # Autoload "GameState": fuel/speed/score/high score + signals
+  difficulty_config.gd   # class_name DifficultyConfig: Level/Mode enums + tuning presets
   player.gd              # accel/brake/coast, steering, off-road slowdown, shake
   road_scroller.gd       # stacked whole-tprite tile looping (no region_rect, no texture_repeat)
 ```
+
+### Difficulty data layer (Task 6A)
+
+- `DifficultyConfig.Level` = EASY / MEDIUM / HARD, `DifficultyConfig.Mode` = FUEL / CONTINUOUS.
+- `DifficultyConfig.get_preset(level)` returns the tuning dictionary; `GameState.get_preset()` returns the current level's preset.
+- Preset keys: `spawn_interval`, `min_gap_px`, `swerver_chance`, `fuel_drain_pct_s`, `fuel_pickup_pct`,
+  `oil_start_stage`, `rock_start_stage`, `stage_length_m`, `score_mult`, `jump_fill_mult`.
+- All gameplay tunables read from `GameState.get_preset()`; MEDIUM is the reference baseline that reproduces the
+  pre-Task-6A behaviour exactly (other levels scale off it via `_relative_factor`).
+- Score gains go through `GameState.add_score()` (applies `score_mult`) and jump meter through
+  `GameState.add_jump_meter()` (applies `jump_fill_mult`).
+- High scores: one slot per (level, mode) = 6 slots, stored in `user://save.cfg` under `[scores]` as
+  `<level>_<mode>_score` / `<level>_<mode>_dist`. Selection lives in `[settings]` as `level` / `mode`.
+- The old single `high_score` value migrates once into the medium/fuel slot.
 
 ### Road X boundaries
 
@@ -112,7 +127,7 @@ scripts/game_state.gd # Autoload "GameState": signals + high score (user://save.
 ## JUMP (signature mechanic)
 
 - Jump meter 0..100 fills with distance driven (full at ~250 m of driving; faster when overtaking cars: +3 per car passed).
-- When full: JUMP button glows. Pressing jump (or Space/Up) starts State.JUMPING for 0.9s.
+- When full: JUMP button glows. Pressing jump (or Space/Up) starts State.JUMPING for 1.1s.
 - Visual: car sprite scale 2.0 -> 2.9 -> 2.0 (sine ease), `shadow` sprite stays on the ground and shrinks/fades, speed is kept.
 - While airborne: hitbox ignores traffic, oil and rocks (can fly over), cannot collect fuel, steering at 60%.
 - LANDING: when state ends, if the hitbox overlaps a traffic car or rock => treat as hard crash. Otherwise play landing

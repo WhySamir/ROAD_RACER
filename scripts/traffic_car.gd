@@ -13,6 +13,8 @@ const BASE_SPEEDS: Dictionary = {
 	"white": 270.0,
 	"truck": 160.0,
 }
+const OVERTAKE_SCORE: int = 50
+const OVERTAKE_JUMP_METER: float = 3.0
 const TEXTURES: Dictionary = {
 	"blue": "res://assets/car_blue.png",
 	"yellow": "res://assets/car_yellow.png",
@@ -59,8 +61,8 @@ func _physics_process(delta: float) -> void:
 		_start_swerve()
 	if not _passed and global_position.y > PLAYER_Y + 32.0:
 		_passed = true
-		GameState.score += 50
-		GameState.jump_meter += 3.0
+		GameState.add_score(OVERTAKE_SCORE)
+		GameState.add_jump_meter(OVERTAKE_JUMP_METER)
 	if global_position.y > OFFSCREEN_Y or global_position.y < -160.0:
 		queue_free()
 

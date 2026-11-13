@@ -20,7 +20,7 @@ const SIDE_SWIPE_SPEED_RATIO: float = 0.3
 const SIDE_SWIPE_FUEL_COST: float = 5.0
 const HARD_CRASH_FUEL_COST: float = 12.0
 const BLINK_INTERVAL_MS: int = 83
-const JUMP_DURATION: float = 0.9
+const JUMP_DURATION: float = 1.1
 const BASE_SPRITE_SCALE: float = 2.0
 const JUMP_STEERING_RATIO: float = 0.6
 const LANDING_SQUASH_DURATION: float = 0.12
@@ -30,6 +30,7 @@ const PLAYER_COLLISION_MASK: int = 10
 const CAR_GROUND_Y: float = 0.0
 const CAR_JUMP_HEIGHT: float = 14.0
 const JUMP_CAR_SCALE: float = 2.6
+const OIL_FUEL_COST: float = 10.0
 
 enum State { DRIVING, SPINNING, JUMPING, DEAD }
 
@@ -63,7 +64,7 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		GameState.speed = 0.0
 		return
-	if _state == State.DRIVING and Input.is_action_just_pressed("jump") and GameState.jump_meter >= 100.0:
+	if _state == State.DRIVING and Input.is_action_just_pressed("jump") and GameState.jump_charges > 0:
 		_start_jump()
 	if _state != State.JUMPING:
 		_update_speed(delta)
@@ -101,7 +102,12 @@ func _update_steering(delta: float) -> void:
 	velocity.y = 0.0
 
 func _on_hitbox_area_entered(area: Area2D) -> void:
-	if _invulnerable or is_airborne() or not area.is_in_group("traffic"):
+	if _invulnerable or is_airborne():
+		return
+	if area.is_in_group("hazard"):
+		receive_hazard_hit(area)
+		return
+	if not area.is_in_group("traffic"):
 		return
 	var other: Node2D = area as Node2D
 	var vertical_distance: float = absf(global_position.y - other.global_position.y)
@@ -123,7 +129,7 @@ func receive_hazard_hit(hazard: Node2D) -> void:
 	if _invulnerable or _state == State.JUMPING:
 		return
 	if str(hazard.get("hazard_type")) == "oil":
-		_start_spin(null, false)
+		_start_oil_effect()
 	else:
 		_start_hard_crash()
 
@@ -143,7 +149,8 @@ func _start_spin(other: Node2D, should_push: bool) -> void:
 		global_position.x = clampf(global_position.x + push_direction * 18.0, SCREEN_LEFT, SCREEN_RIGHT)
 	var spin_tween: Tween = create_tween()
 	spin_tween.tween_property(_sprite, "rotation", _base_sprite_rotation + TAU * 2.0, SIDE_SWIPE_DURATION)
-	GameState.fuel -= SIDE_SWIPE_FUEL_COST
+	if GameState.is_fuel_mode():
+		GameState.fuel -= SIDE_SWIPE_FUEL_COST
 	await spin_tween.finished
 	_sprite.rotation = _base_sprite_rotation
 	_spinning = false
@@ -180,7 +187,9 @@ func _start_hard_crash() -> void:
 	Input.vibrate_handheld(180)
 	speed = 0.0
 	GameState.speed = speed
-	GameState.fuel -= HARD_CRASH_FUEL_COST
+	if GameState.is_fuel_mode():
+		GameState.fuel -= HARD_CRASH_FUEL_COST
+		GameState.lose_life()
 	var shake_tween: Tween = create_tween()
 	shake_tween.tween_property(self, "position:x", position.x + 4.0, 0.06)
 	shake_tween.tween_property(self, "position:x", position.x - 4.0, 0.06)
@@ -188,11 +197,21 @@ func _start_hard_crash() -> void:
 	await get_tree().create_timer(INVULNERABLE_DURATION).timeout
 	_invulnerable = false
 
+func _start_oil_effect() -> void:
+	if _invulnerable or _state == State.JUMPING:
+		return
+	_invulnerable = true
+	if GameState.is_fuel_mode():
+		GameState.fuel -= OIL_FUEL_COST
+	Input.vibrate_handheld(100)
+	await get_tree().create_timer(INVULNERABLE_DURATION).timeout
+	_invulnerable = false
+
 func _start_jump() -> void:
 	_state = State.JUMPING
 	_jump_elapsed = 0.0
 	_landing_in_progress = false
-	GameState.jump_meter = 0.0
+	GameState.consume_jump_charge()
 	$Hitbox.set_deferred("monitoring", false)
 	$Hitbox.set_deferred("monitorable", false)
 	$Hitbox.set_deferred("collision_layer", 0)
