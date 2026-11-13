@@ -1,0 +1,139 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/touch_controls.gd" id="1_touch"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_left"]
+size = Vector2(56, 56)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_right"]
+size = Vector2(56, 56)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jump"]
+size = Vector2(64, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gas"]
+size = Vector2(56, 42)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_brake"]
+size = Vector2(56, 42)
+
+[node name="TouchControls" type="CanvasLayer"]
+layer = 5
+script = ExtResource("1_touch")
+
+[node name="Controls" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="LeftBack" type="ColorRect" parent="Controls"]
+offset_left = 8.0
+offset_top = 336.0
+offset_right = 64.0
+offset_bottom = 392.0
+color = Color(0.1, 0.25, 0.3, 0.65)
+mouse_filter = 2
+
+[node name="RightBack" type="ColorRect" parent="Controls"]
+offset_left = 70.0
+offset_top = 336.0
+offset_right = 126.0
+offset_bottom = 392.0
+color = Color(0.1, 0.25, 0.3, 0.65)
+mouse_filter = 2
+
+[node name="Left" type="TouchScreenButton" parent="Controls"]
+position = Vector2(36, 364)
+shape = SubResource("RectangleShape2D_left")
+shape_centered = true
+action = "steer_left"
+
+[node name="Label" type="Label" parent="Controls/Left"]
+offset_left = -18.0
+offset_top = -10.0
+offset_right = 18.0
+offset_bottom = 10.0
+theme_override_font_sizes/font_size = 12
+text = "<"
+horizontal_alignment = 1
+
+[node name="Right" type="TouchScreenButton" parent="Controls"]
+position = Vector2(98, 364)
+shape = SubResource("RectangleShape2D_right")
+shape_centered = true
+action = "steer_right"
+
+[node name="Label" type="Label" parent="Controls/Right"]
+offset_left = -18.0
+offset_top = -10.0
+offset_right = 18.0
+offset_bottom = 10.0
+theme_override_font_sizes/font_size = 12
+text = ">"
+horizontal_alignment = 1
+
+[node name="Jump" type="TouchScreenButton" parent="Controls"]
+position = Vector2(184, 344)
+shape = SubResource("RectangleShape2D_jump")
+shape_centered = true
+action = "jump"
+
+[node name="Glow" type="ColorRect" parent="Controls/Jump"]
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(1, 0.85, 0.2, 0.28)
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="Controls/Jump"]
+offset_left = -28.0
+offset_top = -8.0
+offset_right = 28.0
+offset_bottom = 8.0
+theme_override_font_sizes/font_size = 9
+text = "JUMP"
+horizontal_alignment = 1
+
+[node name="Gas" type="TouchScreenButton" parent="Controls"]
+position = Vector2(184, 266)
+shape = SubResource("RectangleShape2D_gas")
+shape_centered = true
+action = "accelerate"
+
+[node name="Label" type="Label" parent="Controls/Gas"]
+offset_left = -28.0
+offset_top = -8.0
+offset_right = 28.0
+offset_bottom = 8.0
+theme_override_font_sizes/font_size = 9
+text = "GAS"
+horizontal_alignment = 1
+
+[node name="Brake" type="TouchScreenButton" parent="Controls"]
+position = Vector2(122, 344)
+shape = SubResource("RectangleShape2D_brake")
+shape_centered = true
+action = "brake"
+
+[node name="Label" type="Label" parent="Controls/Brake"]
+offset_left = -28.0
+offset_top = -8.0
+offset_right = 28.0
+offset_bottom = 8.0
+theme_override_font_sizes/font_size = 9
+text = "BRAKE"
+horizontal_alignment = 1
+
+[node name="AutoAccelerate" type="CheckButton" parent="Controls"]
+offset_left = 58.0
+offset_top = 238.0
+offset_right = 168.0
+offset_bottom = 264.0
+theme_override_font_sizes/font_size = 8
+text = "AUTO GAS"
+button_pressed = false

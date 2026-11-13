@@ -133,6 +133,7 @@ func _start_spin(other: Node2D, should_push: bool) -> void:
 	_spinning = true
 	_state = State.SPINNING
 	_invulnerable = true
+	Input.vibrate_handheld(100)
 	speed *= SIDE_SWIPE_SPEED_RATIO
 	GameState.speed = speed
 	if should_push and is_instance_valid(other):
@@ -176,6 +177,7 @@ func _start_hard_crash() -> void:
 	if _invulnerable or _state == State.JUMPING:
 		return
 	_invulnerable = true
+	Input.vibrate_handheld(180)
 	speed = 0.0
 	GameState.speed = speed
 	GameState.fuel -= HARD_CRASH_FUEL_COST
