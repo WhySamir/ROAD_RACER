@@ -40,6 +40,10 @@ func _ready() -> void:
 	$Hitbox.area_entered.connect(_on_hitbox_area_entered)
 
 func _physics_process(delta: float) -> void:
+	if GameState.game_phase != "PLAYING":
+		velocity = Vector2.ZERO
+		GameState.speed = 0.0
+		return
 	_update_speed(delta)
 	_update_steering(delta)
 	move_and_slide()
@@ -76,7 +80,7 @@ func _on_hitbox_area_entered(area: Area2D) -> void:
 	var vertical_distance: float = absf(global_position.y - other.global_position.y)
 	var side_swipe_limit: float = 52.0 * SIDE_SWIPE_HEIGHT_RATIO
 	if vertical_distance < side_swipe_limit:
-		_start_side_swipe(other)
+		_start_spin(other, true)
 	else:
 		_start_hard_crash()
 	if area.has_method("bump_from_player"):
@@ -85,17 +89,26 @@ func _on_hitbox_area_entered(area: Area2D) -> void:
 func receive_traffic_hit(traffic: Node2D) -> void:
 	_on_hitbox_area_entered(traffic as Area2D)
 
-func _start_side_swipe(other: Node2D) -> void:
+func receive_hazard_hit(hazard: Node2D) -> void:
+	if _invulnerable:
+		return
+	if str(hazard.get("hazard_type")) == "oil":
+		_start_spin(null, false)
+	else:
+		_start_hard_crash()
+
+func _start_spin(other: Node2D, should_push: bool) -> void:
 	if _invulnerable or _spinning:
 		return
 	_spinning = true
 	_invulnerable = true
 	speed *= SIDE_SWIPE_SPEED_RATIO
 	GameState.speed = speed
-	var push_direction: float = signf(global_position.x - other.global_position.x)
-	if is_zero_approx(push_direction):
-		push_direction = 1.0
-	global_position.x = clampf(global_position.x + push_direction * 18.0, SCREEN_LEFT, SCREEN_RIGHT)
+	if should_push and is_instance_valid(other):
+		var push_direction: float = signf(global_position.x - other.global_position.x)
+		if is_zero_approx(push_direction):
+			push_direction = 1.0
+		global_position.x = clampf(global_position.x + push_direction * 18.0, SCREEN_LEFT, SCREEN_RIGHT)
 	var spin_tween: Tween = create_tween()
 	spin_tween.tween_property(_sprite, "rotation", _base_sprite_rotation + TAU * 2.0, SIDE_SWIPE_DURATION)
 	GameState.fuel -= SIDE_SWIPE_FUEL_COST
@@ -104,6 +117,16 @@ func _start_side_swipe(other: Node2D) -> void:
 	_spinning = false
 	await get_tree().create_timer(INVULNERABLE_DURATION).timeout
 	_invulnerable = false
+
+func reset_for_new_game() -> void:
+	speed = 0.0
+	GameState.speed = 0.0
+	global_position = Vector2(112.0, 310.0)
+	velocity = Vector2.ZERO
+	_invulnerable = false
+	_spinning = false
+	_sprite.visible = true
+	_sprite.rotation = _base_sprite_rotation
 
 func _start_hard_crash() -> void:
 	if _invulnerable:
