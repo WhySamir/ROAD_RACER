@@ -1,0 +1,38 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/road_scroller.gd" id="1_road"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_player"]
+[ext_resource type="Texture2D" path="res://assets/tile_road.png" id="3_road_texture"]
+[ext_resource type="Texture2D" path="res://assets/tile_grass.png" id="4_grass_texture"]
+
+[node name="Main" type="Node2D"]
+
+[node name="RoadScroller" type="Node2D" parent="."]
+script = ExtResource("1_road")
+
+[node name="Road" type="Sprite2D" parent="RoadScroller"]
+texture_filter = 1
+texture = ExtResource("3_road_texture")
+region_enabled = false
+position = Vector2(24, 0)
+centered = false
+z_index = -1
+
+[node name="GrassLeft" type="Sprite2D" parent="RoadScroller"]
+texture_filter = 1
+texture = ExtResource("4_grass_texture")
+region_enabled = false
+centered = false
+position = Vector2(0, 0)
+z_index = -2
+
+[node name="GrassRight" type="Sprite2D" parent="RoadScroller"]
+texture_filter = 1
+texture = ExtResource("4_grass_texture")
+region_enabled = false
+position = Vector2(200, 0)
+centered = false
+z_index = -2
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(112, 310)
