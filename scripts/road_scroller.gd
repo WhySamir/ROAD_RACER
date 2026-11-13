@@ -20,9 +20,12 @@ var _grass_right_positions: Array[float] = []
 var _road_total_height: float = 0.0
 var _grass_total_height: float = 0.0
 var _player: Node
+var _shake_timer: float = 0.0
+var _shake_amount: float = 0.0
 
 func _ready() -> void:
 	_player = get_tree().get_first_node_in_group("player")
+	GameState.camera_shake_requested.connect(_on_camera_shake_requested)
 	_road.position.x = ROAD_X
 	_grass_left.position.x = 0.0
 	_grass_right.position.x = ROAD_X + ROAD_WIDTH
@@ -42,7 +45,14 @@ func _process(delta: float) -> void:
 	var is_off_road: bool = false
 	if is_instance_valid(_player):
 		is_off_road = bool(_player.get("is_off_road"))
-	position = Vector2(randf_range(-SHAKE_AMOUNT, SHAKE_AMOUNT), randf_range(-SHAKE_AMOUNT, SHAKE_AMOUNT)) if is_off_road else Vector2.ZERO
+	if _shake_timer > 0.0:
+		_shake_timer -= delta
+	var shake: float = _shake_amount if _shake_timer > 0.0 else (SHAKE_AMOUNT if is_off_road else 0.0)
+	position = Vector2(randf_range(-shake, shake), randf_range(-shake, shake)) if shake > 0.0 else Vector2.ZERO
+
+func _on_camera_shake_requested(amount: float) -> void:
+	_shake_amount = amount
+	_shake_timer = 0.16
 
 func _setup_stack(source: Sprite2D, tiles: Array[Sprite2D], positions: Array[float]) -> float:
 	source.region_enabled = false

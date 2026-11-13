@@ -30,7 +30,11 @@ var _player: Node
 var _sprite: Sprite2D
 var _passed: bool = false
 var _bump_velocity: float = 0.0
-var _has_swerved: bool = false
+var _swerve_started: bool = false
+
+@export var will_swerve: bool = false
+@export var swerve_dir: int = 1
+@export var swerve_trigger_y: float = 150.0
 
 func _ready() -> void:
 	add_to_group("traffic")
@@ -40,6 +44,8 @@ func _ready() -> void:
 	traffic_speed = float(BASE_SPEEDS.get(vehicle_type, BASE_SPEEDS["blue"])) * stage_speed_multiplier
 	monitoring = true
 	area_entered.connect(_on_area_entered)
+	body_entered.connect(_on_body_entered)
+	area_exited.connect(_on_area_exited)
 	if vehicle_type == "truck":
 		$CollisionShape2D.shape.size = Vector2(28.0, 80.0)
 
@@ -49,25 +55,38 @@ func _physics_process(delta: float) -> void:
 	global_position.x += _bump_velocity * delta
 	_bump_velocity = move_toward(_bump_velocity, 0.0, 220.0 * delta)
 	global_position.x = clampf(global_position.x, ROAD_LEFT, ROAD_LEFT + ROAD_WIDTH)
-	if vehicle_type == "purple" and not _has_swerved and is_instance_valid(_player):
-		if global_position.y - _player.global_position.y < 140.0 and global_position.y > _player.global_position.y - 180.0:
-			_start_swerve()
-	if not _passed and is_instance_valid(_player) and global_position.y > PLAYER_Y + 32.0:
+	if vehicle_type == "purple" and will_swerve and not _swerve_started and global_position.y >= swerve_trigger_y:
+		_start_swerve()
+	if not _passed and global_position.y > PLAYER_Y + 32.0:
 		_passed = true
 		GameState.score += 50
+		GameState.jump_meter += 3.0
 	if global_position.y > OFFSCREEN_Y or global_position.y < -160.0:
 		queue_free()
 
 func _start_swerve() -> void:
-	_has_swerved = true
+	_swerve_started = true
 	var lane: int = int(round((global_position.x - (ROAD_LEFT + 22.0)) / LANE_WIDTH))
-	var target_lane: int = clampi(lane + (1 if lane < 2 else -1), 0, 3)
+	var target_lane: int = clampi(lane + swerve_dir, 0, 3)
 	var target_x: float = ROAD_LEFT + 22.0 + LANE_WIDTH * target_lane
 	create_tween().tween_property(self, "global_position:x", target_x, 0.45).set_trans(Tween.TRANS_SINE)
 
 func _on_area_entered(area: Area2D) -> void:
+	var player: Node = area.get_parent()
+	if player.has_method("is_airborne") and player.is_airborne():
+		return
 	if area.is_in_group("player_hitbox") and area.has_method("receive_traffic_hit"):
 		area.call("receive_traffic_hit", self)
+
+func _on_body_entered(body: Node) -> void:
+	var player: Node = body
+	if player.has_method("is_airborne") and player.is_airborne():
+		return
+
+func _on_area_exited(area: Area2D) -> void:
+	var player: Node = area.get_parent()
+	if player.has_method("is_airborne") and player.is_airborne():
+		return
 
 func bump_from_player() -> void:
 	var direction: float = signf(global_position.x - ROAD_LEFT - 88.0)

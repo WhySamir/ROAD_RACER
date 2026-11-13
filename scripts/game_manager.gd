@@ -12,6 +12,7 @@ const HIGH_SPEED_FUEL_DRAIN: float = 0.01
 const PICKUP_MIN_INTERVAL: float = 8.0
 const PICKUP_MAX_INTERVAL: float = 14.0
 const HAZARD_INTERVAL: float = 5.0
+const JUMP_DISTANCE_METERS: float = 250.0
 
 @export var traffic_scene: PackedScene
 @export var pickup_scene: PackedScene
@@ -55,6 +56,7 @@ func _process(delta: float) -> void:
 	if distance_score > _last_distance_score:
 		GameState.score += distance_score - _last_distance_score
 		_last_distance_score = distance_score
+	GameState.jump_meter += GameState.speed * delta / 10.0 * 100.0 / JUMP_DISTANCE_METERS
 	GameState.distance = distance_m
 	GameState.distance_changed.emit(distance_m)
 	if stage != GameState.stage:
@@ -139,8 +141,12 @@ func _try_spawn_traffic() -> bool:
 		return false
 	var lane: int = available_lanes[_rng.randi_range(0, available_lanes.size() - 1)]
 	var car: Area2D = traffic_scene.instantiate() as Area2D
-	car.set("vehicle_type", _choose_vehicle_type())
+	var vehicle_type: String = _choose_vehicle_type()
+	car.set("vehicle_type", vehicle_type)
 	car.set("stage_speed_multiplier", 1.0 + 0.06 * float(stage - 1))
+	car.set("will_swerve", vehicle_type == "purple")
+	car.set("swerve_dir", 1 if lane < 2 else -1)
+	car.set("swerve_trigger_y", 150.0)
 	car.position = Vector2(ROAD_LEFT + 22.0 + LANE_WIDTH * lane, SPAWN_Y)
 	add_child(car)
 	return true

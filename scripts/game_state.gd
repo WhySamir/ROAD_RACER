@@ -10,6 +10,7 @@ signal stage_changed(value: int)
 signal phase_changed(value: String)
 signal countdown_changed(value: int)
 signal best_score_changed(value: int)
+signal camera_shake_requested(amount: float)
 
 const SAVE_PATH: String = "user://save.cfg"
 
@@ -33,6 +34,11 @@ var distance: float = 0.0
 var stage: int = 1
 var game_phase: String = "MENU"
 
+var jump_meter: float = 0.0:
+	set(value):
+		jump_meter = clampf(value, 0.0, 100.0)
+		jump_meter_changed.emit(jump_meter)
+
 func _ready() -> void:
 	_load_high_score()
 
@@ -51,6 +57,7 @@ func reset_game() -> void:
 	speed = 0.0
 	fuel = 100.0
 	score = 0
+	jump_meter = 0.0
 	distance = 0.0
 	stage = 1
 	distance_changed.emit(distance)
@@ -60,6 +67,9 @@ func reset_game() -> void:
 func set_phase(value: String) -> void:
 	game_phase = value
 	phase_changed.emit(game_phase)
+
+func request_camera_shake(amount: float) -> void:
+	camera_shake_requested.emit(amount)
 
 func _load_high_score() -> void:
 	var config: ConfigFile = ConfigFile.new()

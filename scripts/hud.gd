@@ -6,6 +6,9 @@ extends CanvasLayer
 @onready var _speed_label: Label = $Panel/Speed
 @onready var _fuel_bar: ColorRect = $Panel/FuelBar/Fill
 @onready var _fuel_value: Label = $Panel/FuelBar/Value
+@onready var _jump_bar: ColorRect = $Panel/JumpBar/Fill
+@onready var _jump_glow: ColorRect = $Panel/JumpBar/Glow
+@onready var _jump_label: Label = $Panel/JumpBar/Value
 @onready var _message: Label = $Message
 @onready var _countdown: Label = $Countdown
 
@@ -17,12 +20,14 @@ func _ready() -> void:
 	GameState.fuel_changed.connect(_on_fuel_changed)
 	GameState.phase_changed.connect(_on_phase_changed)
 	GameState.countdown_changed.connect(_on_countdown_changed)
+	GameState.jump_meter_changed.connect(_on_jump_meter_changed)
 	_on_score_changed(GameState.score)
 	_on_best_changed(GameState.high_score)
 	_on_distance_changed(GameState.distance)
 	_on_speed_changed(GameState.speed)
 	_on_fuel_changed(GameState.fuel)
 	_on_phase_changed(GameState.game_phase)
+	_on_jump_meter_changed(GameState.jump_meter)
 
 func _on_score_changed(value: int) -> void:
 	_score_label.text = "SCORE %06d" % value
@@ -49,3 +54,9 @@ func _on_phase_changed(value: String) -> void:
 
 func _on_countdown_changed(value: int) -> void:
 	_countdown.text = str(value) if value > 0 else "GO!"
+
+func _on_jump_meter_changed(value: float) -> void:
+	var ratio: float = clampf(value / 100.0, 0.0, 1.0)
+	_jump_bar.size.x = 60.0 * ratio
+	_jump_glow.visible = value >= 100.0
+	_jump_label.text = "JUMP READY" if value >= 100.0 else "JUMP %03d" % int(value)
