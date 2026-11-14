@@ -2,17 +2,27 @@ extends Node2D
 
 const MENU_ROAD_SPEED: float = 200.0
 const DECORATIVE_CAR_SPEEDS: Array[float] = [70.0, 105.0, 145.0, 190.0]
-const DECORATIVE_TOP: float = -90.0
-const DECORATIVE_BOTTOM: float = 440.0
 const PRESS_SCALE: float = 0.96
 const PRESS_DURATION: float = 0.06
 const FOCUS_COLOR: Color = Color("ffd23f")
+const PANEL_MARGIN: float = 12.0
+const MAIN_PANEL_WIDTH: float = 180.0
+const MAIN_PANEL_HEIGHT: float = 352.0
+const LEVEL_PANEL_HEIGHT: float = 328.0
+const SCORES_PANEL_WIDTH: float = 208.0
+const SCORES_PANEL_HEIGHT: float = 360.0
+const RESET_PANEL_HEIGHT: float = 110.0
+const MUTE_WIDTH: float = 54.0
+const MUTE_HEIGHT: float = 28.0
 
 @onready var _ui: Control = $UI/Root
 @onready var _main_screen: Control = $UI/Root/MainScreen
 @onready var _level_screen: Control = $UI/Root/LevelScreen
 @onready var _scores_screen: Control = $UI/Root/ScoresScreen
 @onready var _mute_button: Button = $UI/Root/MuteButton
+@onready var _controls_button: Button = $UI/Root/MainScreen/Panel/Content/Controls
+@onready var _hand_button: Button = $UI/Root/MainScreen/Panel/Content/Hand
+@onready var _auto_gas_button: Button = $UI/Root/MainScreen/Panel/Content/AutoGas
 @onready var _level_label: Label = $UI/Root/MainScreen/Panel/Content/Level
 @onready var _level_buttons: Array[Button] = [
 	$UI/Root/LevelScreen/Panel/Content/Easy,
@@ -42,12 +52,20 @@ func _ready() -> void:
 	GameState.speed = MENU_ROAD_SPEED
 	_connect_buttons()
 	_mute_button.pressed.connect(_toggle_mute)
+	_controls_button.pressed.connect(_toggle_control_scheme)
+	_hand_button.pressed.connect(_toggle_hand)
+	_auto_gas_button.pressed.connect(_toggle_auto_gas)
 	GameState.selection_changed.connect(_refresh_selection)
 	_refresh_selection()
 	_refresh_mute()
+	_refresh_controls()
+	_refresh_auto_gas()
 	_show_screen("MAIN", false)
+	ScreenMetrics.changed.connect(_layout_background)
+	_layout_background()
 	for index: int in _decorative_cars.size():
-		_decorative_cars[index].position.y = DECORATIVE_TOP - float(index * 125)
+		_decorative_cars[index].position.x = ScreenMetrics.lane_center(index)
+		_decorative_cars[index].position.y = -80.0 - float(index * 125)
 
 func _process(delta: float) -> void:
 	GameState.speed = MENU_ROAD_SPEED
@@ -55,10 +73,32 @@ func _process(delta: float) -> void:
 		var car: Sprite2D = _decorative_cars[index]
 		var direction: float = 1.0 if index % 2 == 0 else -1.0
 		car.position.y += DECORATIVE_CAR_SPEEDS[index] * direction * delta
-		if direction > 0.0 and car.position.y > DECORATIVE_BOTTOM:
-			car.position.y = DECORATIVE_TOP
-		elif direction < 0.0 and car.position.y < DECORATIVE_TOP:
-			car.position.y = DECORATIVE_BOTTOM
+		if direction > 0.0 and car.position.y > ScreenMetrics.view_size.y + 40.0:
+			car.position.y = -80.0
+		elif direction < 0.0 and car.position.y < -80.0:
+			car.position.y = ScreenMetrics.view_size.y + 40.0
+
+func _layout_background() -> void:
+	for index: int in _decorative_cars.size():
+		_decorative_cars[index].position.x = ScreenMetrics.lane_center(index)
+	_layout_screens()
+
+## Keeps the menu panels centered on any canvas size instead of assuming 224x400.
+func _layout_screens() -> void:
+	var view: Vector2 = ScreenMetrics.view_size
+	_mute_button.position = Vector2(view.x - ScreenMetrics.safe_right - MUTE_WIDTH, 6.0 + ScreenMetrics.safe_top)
+	_mute_button.size = Vector2(MUTE_WIDTH, MUTE_HEIGHT)
+	_center_panel(_main_screen.get_node("Panel"), Vector2(MAIN_PANEL_WIDTH, MAIN_PANEL_HEIGHT))
+	_center_panel(_level_screen.get_node("Panel"), Vector2(MAIN_PANEL_WIDTH, LEVEL_PANEL_HEIGHT))
+	_center_panel(_scores_screen.get_node("Panel"), Vector2(SCORES_PANEL_WIDTH, SCORES_PANEL_HEIGHT))
+	_center_panel(_scores_screen.get_node("ResetDialog"), Vector2(MAIN_PANEL_WIDTH, RESET_PANEL_HEIGHT))
+
+func _center_panel(panel: Control, design_size: Vector2) -> void:
+	var view: Vector2 = ScreenMetrics.view_size
+	var available: Vector2 = Vector2(view.x - PANEL_MARGIN * 2.0, view.y - ScreenMetrics.safe_top - ScreenMetrics.safe_bottom - PANEL_MARGIN * 2.0)
+	var panel_size: Vector2 = Vector2(minf(design_size.x, available.x), minf(design_size.y, available.y))
+	panel.position = Vector2((view.x - panel_size.x) * 0.5, ScreenMetrics.safe_top + PANEL_MARGIN + (available.y - panel_size.y) * 0.5)
+	panel.size = panel_size
 	
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
@@ -95,6 +135,8 @@ func _all_buttons() -> Array[Button]:
 		$UI/Root/ScoresScreen/Panel/Content/Reset,
 		$UI/Root/ScoresScreen/ResetDialog/Yes,
 		$UI/Root/ScoresScreen/ResetDialog/No,
+		_controls_button,
+		_hand_button,
 	]
 
 func _start_fuel_game() -> void:
@@ -195,3 +237,22 @@ func _toggle_mute() -> void:
 
 func _refresh_mute() -> void:
 	_mute_button.text = "SFX OFF" if GameState.muted else "SFX ON"
+
+func _toggle_control_scheme() -> void:
+	GameState.set_control_scheme(GameState.ControlScheme.BUTTONS if GameState.control_scheme == GameState.ControlScheme.SWIPE else GameState.ControlScheme.SWIPE)
+	_refresh_controls()
+
+func _toggle_hand() -> void:
+	GameState.set_hand_side(GameState.HandSide.LEFT if GameState.hand_side == GameState.HandSide.RIGHT else GameState.HandSide.RIGHT)
+	_refresh_controls()
+
+func _refresh_controls() -> void:
+	_controls_button.text = "CONTROLS: SWIPE" if GameState.control_scheme == GameState.ControlScheme.SWIPE else "CONTROLS: BUTTONS"
+	_hand_button.text = "HAND: RIGHT" if GameState.hand_side == GameState.HandSide.RIGHT else "HAND: LEFT"
+
+func _toggle_auto_gas() -> void:
+	GameState.set_auto_accelerate(not GameState.auto_accelerate)
+	_refresh_auto_gas()
+
+func _refresh_auto_gas() -> void:
+	_auto_gas_button.text = "AUTO GAS: ON" if GameState.auto_accelerate else "AUTO GAS: OFF"

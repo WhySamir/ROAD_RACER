@@ -6,12 +6,7 @@ const COAST_DECELERATION: float = 60.0
 const MAX_SPEED: float = 420.0
 const OFF_ROAD_SPEED_RATIO: float = 0.45
 const STEERING_SPEED: float = 150.0
-const VIEW_WIDTH: float = 224.0
-const ROAD_WIDTH: float = 176.0
-const ROAD_LEFT: float = (VIEW_WIDTH - ROAD_WIDTH) / 2.0
-const ROAD_RIGHT: float = ROAD_LEFT + ROAD_WIDTH
 const SCREEN_LEFT: float = 14.0
-const SCREEN_RIGHT: float = 210.0
 const SPRITE_WOBBLE: float = 0.06
 const SIDE_SWIPE_HEIGHT_RATIO: float = 0.7
 const SIDE_SWIPE_DURATION: float = 1.0
@@ -54,12 +49,18 @@ func _ready() -> void:
 	_sprite = $Sprite2D
 	_base_sprite_rotation = _sprite.rotation
 	_sprite.position.y = CAR_GROUND_Y
+	global_position.x = ScreenMetrics.lane_center(1)
 	GameState.speed = speed
 	$Hitbox.add_to_group("player_hitbox")
 	$Hitbox.area_entered.connect(_on_hitbox_area_entered)
 	$Shadow.visible = false
 	$Hitbox.monitoring = true
 	$Hitbox.monitorable = true
+	ScreenMetrics.changed.connect(_on_screen_changed)
+	_on_screen_changed()
+
+func _on_screen_changed() -> void:
+	global_position.y = ScreenMetrics.player_y()
 
 func _physics_process(delta: float) -> void:
 	if GameState.game_phase != "PLAYING":
@@ -83,8 +84,8 @@ func _physics_process(delta: float) -> void:
 		_update_jump_visual(delta)
 	_update_steering(delta)
 	move_and_slide()
-	global_position.x = clampf(global_position.x, SCREEN_LEFT, SCREEN_RIGHT)
-	is_off_road = global_position.x < ROAD_LEFT or global_position.x > ROAD_RIGHT
+	global_position.x = clampf(global_position.x, SCREEN_LEFT, ScreenMetrics.view_size.x - SCREEN_LEFT)
+	is_off_road = global_position.x < ScreenMetrics.road_left() or global_position.x > ScreenMetrics.road_left() + 176.0
 	_sprite.rotation = _base_sprite_rotation + (sin(Time.get_ticks_msec() * 0.025) * SPRITE_WOBBLE if is_off_road else 0.0)
 	if _invulnerable:
 		_sprite.visible = (Time.get_ticks_msec() / BLINK_INTERVAL_MS) % 2 == 0
@@ -133,6 +134,9 @@ func _on_hitbox_area_entered(area: Area2D) -> void:
 func is_airborne() -> bool:
 	return _state == State.JUMPING
 
+func can_auto_accelerate() -> bool:
+	return _state != State.SPINNING and _state != State.DEAD and GameState.game_phase == "PLAYING"
+
 func receive_traffic_hit(traffic: Node2D) -> void:
 	_on_hitbox_area_entered(traffic as Area2D)
 
@@ -158,7 +162,7 @@ func _start_spin(other: Node2D, should_push: bool) -> void:
 		var push_direction: float = signf(global_position.x - other.global_position.x)
 		if is_zero_approx(push_direction):
 			push_direction = 1.0
-		global_position.x = clampf(global_position.x + push_direction * 18.0, SCREEN_LEFT, SCREEN_RIGHT)
+		global_position.x = clampf(global_position.x + push_direction * 18.0, SCREEN_LEFT, ScreenMetrics.view_size.x - SCREEN_LEFT)
 	var spin_tween: Tween = create_tween()
 	spin_tween.tween_property(_sprite, "rotation", _base_sprite_rotation + TAU * 2.0, SIDE_SWIPE_DURATION)
 	if GameState.is_fuel_mode():
@@ -173,7 +177,7 @@ func _start_spin(other: Node2D, should_push: bool) -> void:
 func reset_for_new_game() -> void:
 	speed = 0.0
 	GameState.speed = 0.0
-	global_position = Vector2(112.0, 310.0)
+	global_position = Vector2(ScreenMetrics.lane_center(1), ScreenMetrics.player_y())
 	velocity = Vector2.ZERO
 	_invulnerable = false
 	_spinning = false

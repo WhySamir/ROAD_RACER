@@ -16,6 +16,12 @@
 
 - Grass = -2, Road = -1, Pickups = 0, Player & Traffic Cars = 10, Effects/Particles = 20, HUD = CanvasLayer.
 
+## Status: PROJECT CLOSED
+
+Final state of the project. The last completed task was the responsiveness pass
+(`scripts/screen_metrics.gd` + HUD / main menu / touch control rework). The repository is
+archived: no further features, fixes or builds are planned.
+
 ## Current status — Task 1 (driving skeleton) complete
 
 ### Working file structure

@@ -1,9 +1,7 @@
 extends Node
 
-const ROAD_LEFT: float = 24.0
-const LANE_WIDTH: float = 44.0
 const LANE_COUNT: int = 4
-const SPAWN_Y: float = -90.0
+const SPAWN_Y: float = -80.0
 const BASE_SPAWN_INTERVAL: float = 1.65
 const BASE_MIN_GAP_PX: float = 90.0
 const MIN_SPAWN_INTERVAL: float = 0.65
@@ -178,7 +176,7 @@ func _spawn_pickup() -> void:
 		return
 	var pickup: Area2D = pickup_scene.instantiate() as Area2D
 	var lane: int = _rng.randi_range(0, LANE_COUNT - 1)
-	pickup.position = Vector2(ROAD_LEFT + 22.0 + LANE_WIDTH * lane, SPAWN_Y)
+	pickup.position = Vector2(ScreenMetrics.lane_center(lane), SPAWN_Y)
 	add_child(pickup)
 
 func _spawn_hazard(hazard_type: String) -> void:
@@ -187,7 +185,7 @@ func _spawn_hazard(hazard_type: String) -> void:
 	var hazard: Area2D = hazard_scene.instantiate() as Area2D
 	hazard.set("hazard_type", hazard_type)
 	var lane: int = _rng.randi_range(0, LANE_COUNT - 1)
-	hazard.position = Vector2(ROAD_LEFT + 22.0 + LANE_WIDTH * lane, SPAWN_Y)
+	hazard.position = Vector2(ScreenMetrics.lane_center(lane), SPAWN_Y)
 	add_child(hazard)
 
 func _try_spawn_traffic() -> bool:
@@ -207,12 +205,12 @@ func _try_spawn_traffic() -> bool:
 	car.set("will_swerve", vehicle_type == "purple")
 	car.set("swerve_dir", 1 if lane < 2 else -1)
 	car.set("swerve_trigger_y", SWERVE_TRIGGER_Y)
-	car.position = Vector2(ROAD_LEFT + 22.0 + LANE_WIDTH * lane, SPAWN_Y)
+	car.position = Vector2(ScreenMetrics.lane_center(lane), SPAWN_Y)
 	add_child(car)
 	return true
 
 func _lane_is_clear(lane: int) -> bool:
-	var lane_x: float = ROAD_LEFT + 22.0 + LANE_WIDTH * lane
+	var lane_x: float = ScreenMetrics.lane_center(lane)
 	var min_gap_px: float = BASE_MIN_GAP_PX * _relative_factor(GameState.get_preset(), "min_gap_px")
 	for node: Node in get_tree().get_nodes_in_group("traffic"):
 		var traffic: Node2D = node as Node2D

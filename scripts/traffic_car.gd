@@ -1,10 +1,5 @@
 extends Area2D
 
-const ROAD_LEFT: float = 24.0
-const ROAD_WIDTH: float = 176.0
-const LANE_WIDTH: float = 44.0
-const PLAYER_Y: float = 310.0
-const OFFSCREEN_Y: float = 460.0
 const BASE_SPEEDS: Dictionary = {
 	"blue": 180.0,
 	"yellow": 230.0,
@@ -56,21 +51,21 @@ func _physics_process(delta: float) -> void:
 	global_position.y += (player_speed - traffic_speed) * delta
 	global_position.x += _bump_velocity * delta
 	_bump_velocity = move_toward(_bump_velocity, 0.0, 220.0 * delta)
-	global_position.x = clampf(global_position.x, ROAD_LEFT, ROAD_LEFT + ROAD_WIDTH)
+	global_position.x = clampf(global_position.x, ScreenMetrics.road_left(), ScreenMetrics.road_left() + 176.0)
 	if vehicle_type == "purple" and will_swerve and not _swerve_started and global_position.y >= swerve_trigger_y:
 		_start_swerve()
-	if not _passed and global_position.y > PLAYER_Y + 32.0:
+	if not _passed and global_position.y > ScreenMetrics.player_y() + 32.0:
 		_passed = true
 		GameState.add_score(OVERTAKE_SCORE)
 		GameState.add_jump_meter(OVERTAKE_JUMP_METER)
-	if global_position.y > OFFSCREEN_Y or global_position.y < -160.0:
+	if global_position.y > ScreenMetrics.view_size.y + 80.0 or global_position.y < -80.0:
 		queue_free()
 
 func _start_swerve() -> void:
 	_swerve_started = true
-	var lane: int = int(round((global_position.x - (ROAD_LEFT + 22.0)) / LANE_WIDTH))
+	var lane: int = int(round((global_position.x - ScreenMetrics.lane_center(0)) / 44.0))
 	var target_lane: int = clampi(lane + swerve_dir, 0, 3)
-	var target_x: float = ROAD_LEFT + 22.0 + LANE_WIDTH * target_lane
+	var target_x: float = ScreenMetrics.lane_center(target_lane)
 	create_tween().tween_property(self, "global_position:x", target_x, 0.45).set_trans(Tween.TRANS_SINE)
 
 func _on_area_entered(area: Area2D) -> void:
@@ -91,7 +86,7 @@ func _on_area_exited(area: Area2D) -> void:
 		return
 
 func bump_from_player() -> void:
-	var direction: float = signf(global_position.x - ROAD_LEFT - 88.0)
+	var direction: float = signf(global_position.x - ScreenMetrics.road_left() - 88.0)
 	if is_instance_valid(_player):
 		direction = signf(global_position.x - _player.global_position.x)
 	if is_zero_approx(direction):

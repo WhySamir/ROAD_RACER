@@ -26,6 +26,11 @@ const MAX_LIVES: int = 3
 const START_LIVES: int = 3
 const MAX_JUMP_CHARGES: int = 5
 
+## Touch control schemes.
+enum ControlScheme { SWIPE, BUTTONS }
+## Which thumb the gas/brake buttons belong to.
+enum HandSide { RIGHT, LEFT }
+
 const ALL_LEVELS: Array = [
 	DifficultyConfig.Level.EASY,
 	DifficultyConfig.Level.MEDIUM,
@@ -39,6 +44,10 @@ const ALL_MODES: Array = [
 var level: DifficultyConfig.Level = DifficultyConfig.Level.MEDIUM
 var mode: DifficultyConfig.Mode = DifficultyConfig.Mode.FUEL
 var muted: bool = false
+var auto_accelerate: bool = OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
+var seen_swipe_hint: bool = false
+var control_scheme: ControlScheme = ControlScheme.BUTTONS
+var hand_side: HandSide = HandSide.RIGHT
 var high_score: int = 0
 var game_over_new_best: bool = false
 
@@ -97,6 +106,32 @@ func set_muted(value: bool) -> void:
 	if muted == value:
 		return
 	muted = value
+	_save_to_disk()
+
+## Switches between the swipe and button control schemes.
+func set_control_scheme(value: ControlScheme) -> void:
+	if control_scheme == value:
+		return
+	control_scheme = value
+	_save_to_disk()
+	selection_changed.emit()
+
+## Moves the gas/brake buttons to the left or right thumb.
+func set_hand_side(value: HandSide) -> void:
+	if hand_side == value:
+		return
+	hand_side = value
+	_save_to_disk()
+	selection_changed.emit()
+
+func set_auto_accelerate(value: bool) -> void:
+	auto_accelerate = value
+	_save_to_disk()
+
+func set_seen_swipe_hint(value: bool) -> void:
+	if seen_swipe_hint == value:
+		return
+	seen_swipe_hint = value
 	_save_to_disk()
 
 func get_preset() -> Dictionary:
@@ -230,6 +265,10 @@ func _load_from_disk() -> bool:
 	level = _level_from_index(int(config.get_value(SETTINGS_SECTION, "level", 1)))
 	mode = _mode_from_index(int(config.get_value(SETTINGS_SECTION, "mode", 0)))
 	muted = bool(config.get_value(SETTINGS_SECTION, "muted", false))
+	auto_accelerate = bool(config.get_value(SETTINGS_SECTION, "auto_accelerate", OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()))
+	seen_swipe_hint = bool(config.get_value(SETTINGS_SECTION, "seen_swipe_hint", false))
+	control_scheme = _control_scheme_from_index(int(config.get_value(SETTINGS_SECTION, "control_scheme", -1)))
+	hand_side = _hand_side_from_index(int(config.get_value(SETTINGS_SECTION, "hand_side", int(HandSide.RIGHT))))
 	for slot_level: DifficultyConfig.Level in ALL_LEVELS:
 		for slot_mode: DifficultyConfig.Mode in ALL_MODES:
 			var slot: String = _slot_key(slot_level, slot_mode)
@@ -245,6 +284,10 @@ func _save_to_disk() -> void:
 	config.set_value(SETTINGS_SECTION, "level", int(level))
 	config.set_value(SETTINGS_SECTION, "mode", int(mode))
 	config.set_value(SETTINGS_SECTION, "muted", muted)
+	config.set_value(SETTINGS_SECTION, "auto_accelerate", auto_accelerate)
+	config.set_value(SETTINGS_SECTION, "seen_swipe_hint", seen_swipe_hint)
+	config.set_value(SETTINGS_SECTION, "control_scheme", int(control_scheme))
+	config.set_value(SETTINGS_SECTION, "hand_side", int(hand_side))
 	for slot_level: DifficultyConfig.Level in ALL_LEVELS:
 		for slot_mode: DifficultyConfig.Mode in ALL_MODES:
 			var slot: String = _slot_key(slot_level, slot_mode)
@@ -281,3 +324,16 @@ func _mode_from_index(value: int) -> DifficultyConfig.Mode:
 	if value == 1:
 		return DifficultyConfig.Mode.CONTINUOUS
 	return DifficultyConfig.Mode.FUEL
+
+## Defaults to SWIPE on mobile and BUTTONS everywhere else.
+func _control_scheme_from_index(value: int) -> ControlScheme:
+	if value == int(ControlScheme.SWIPE):
+		return ControlScheme.SWIPE
+	if value == int(ControlScheme.BUTTONS):
+		return ControlScheme.BUTTONS
+	return ControlScheme.SWIPE if OS.has_feature("mobile") else ControlScheme.BUTTONS
+
+func _hand_side_from_index(value: int) -> HandSide:
+	if value == int(HandSide.LEFT):
+		return HandSide.LEFT
+	return HandSide.RIGHT

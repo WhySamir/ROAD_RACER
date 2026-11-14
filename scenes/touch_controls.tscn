@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/touch_controls.gd" id="1_touch"]
 
@@ -18,10 +18,10 @@ size = Vector2(56, 42)
 size = Vector2(56, 42)
 
 [node name="TouchControls" type="CanvasLayer"]
-layer = 5
+layer = 0
 script = ExtResource("1_touch")
 
-[node name="Controls" type="Control" parent="."]
+[node name="ControlsMargin" type="MarginContainer" parent="."]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -30,7 +30,42 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="LeftBack" type="ColorRect" parent="Controls"]
+[node name="SwipeArea" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="GasButton" type="Control" parent="SwipeArea"]
+layout_mode = 0
+offset_left = 136.0
+offset_top = 276.0
+offset_right = 200.0
+offset_bottom = 332.0
+mouse_filter = 0
+
+[node name="BrakeButton" type="Control" parent="SwipeArea"]
+layout_mode = 0
+offset_left = 136.0
+offset_top = 340.0
+offset_right = 200.0
+offset_bottom = 396.0
+mouse_filter = 0
+
+[node name="ButtonScheme" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="LeftBack" type="ColorRect" parent="ButtonScheme"]
 offset_left = 8.0
 offset_top = 336.0
 offset_right = 64.0
@@ -38,7 +73,7 @@ offset_bottom = 392.0
 color = Color(0.1, 0.25, 0.3, 0.65)
 mouse_filter = 2
 
-[node name="RightBack" type="ColorRect" parent="Controls"]
+[node name="RightBack" type="ColorRect" parent="ButtonScheme"]
 offset_left = 70.0
 offset_top = 336.0
 offset_right = 126.0
@@ -46,13 +81,13 @@ offset_bottom = 392.0
 color = Color(0.1, 0.25, 0.3, 0.65)
 mouse_filter = 2
 
-[node name="Left" type="TouchScreenButton" parent="Controls"]
+[node name="Left" type="TouchScreenButton" parent="ButtonScheme"]
 position = Vector2(36, 364)
 shape = SubResource("RectangleShape2D_left")
 shape_centered = true
 action = "steer_left"
 
-[node name="Label" type="Label" parent="Controls/Left"]
+[node name="Label" type="Label" parent="ButtonScheme/Left"]
 offset_left = -18.0
 offset_top = -10.0
 offset_right = 18.0
@@ -61,13 +96,13 @@ theme_override_font_sizes/font_size = 12
 text = "<"
 horizontal_alignment = 1
 
-[node name="Right" type="TouchScreenButton" parent="Controls"]
+[node name="Right" type="TouchScreenButton" parent="ButtonScheme"]
 position = Vector2(98, 364)
 shape = SubResource("RectangleShape2D_right")
 shape_centered = true
 action = "steer_right"
 
-[node name="Label" type="Label" parent="Controls/Right"]
+[node name="Label" type="Label" parent="ButtonScheme/Right"]
 offset_left = -18.0
 offset_top = -10.0
 offset_right = 18.0
@@ -76,13 +111,13 @@ theme_override_font_sizes/font_size = 12
 text = ">"
 horizontal_alignment = 1
 
-[node name="Jump" type="TouchScreenButton" parent="Controls"]
+[node name="Jump" type="TouchScreenButton" parent="ButtonScheme"]
 position = Vector2(184, 344)
 shape = SubResource("RectangleShape2D_jump")
 shape_centered = true
 action = "jump"
 
-[node name="Glow" type="ColorRect" parent="Controls/Jump"]
+[node name="Glow" type="ColorRect" parent="ButtonScheme/Jump"]
 offset_left = -32.0
 offset_top = -32.0
 offset_right = 32.0
@@ -90,7 +125,7 @@ offset_bottom = 32.0
 color = Color(1, 0.85, 0.2, 0.28)
 mouse_filter = 2
 
-[node name="Label" type="Label" parent="Controls/Jump"]
+[node name="Label" type="Label" parent="ButtonScheme/Jump"]
 offset_left = -28.0
 offset_top = -8.0
 offset_right = 28.0
@@ -99,37 +134,47 @@ theme_override_font_sizes/font_size = 9
 text = "JUMP"
 horizontal_alignment = 1
 
-[node name="Gas" type="TouchScreenButton" parent="Controls"]
+[node name="Gas" type="TouchScreenButton" parent="ButtonScheme"]
 position = Vector2(184, 266)
 shape = SubResource("RectangleShape2D_gas")
 shape_centered = true
 action = "accelerate"
 
-[node name="Label" type="Label" parent="Controls/Gas"]
+[node name="Label" type="Label" parent="ButtonScheme/Gas"]
 offset_left = -28.0
 offset_top = -8.0
 offset_right = 28.0
 offset_bottom = 8.0
-theme_override_font_sizes/font_size = 9
-text = "GAS"
+theme_override_font_sizes/font_size = 16
+text = "▲"
 horizontal_alignment = 1
 
-[node name="Brake" type="TouchScreenButton" parent="Controls"]
-position = Vector2(122, 344)
+[node name="Brake" type="TouchScreenButton" parent="ButtonScheme"]
+position = Vector2(67, 300)
 shape = SubResource("RectangleShape2D_brake")
 shape_centered = true
 action = "brake"
 
-[node name="Label" type="Label" parent="Controls/Brake"]
+[node name="Label" type="Label" parent="ButtonScheme/Brake"]
 offset_left = -28.0
 offset_top = -8.0
 offset_right = 28.0
 offset_bottom = 8.0
-theme_override_font_sizes/font_size = 9
-text = "BRAKE"
+theme_override_font_sizes/font_size = 16
+text = "▼"
 horizontal_alignment = 1
 
-[node name="AutoAccelerate" type="CheckButton" parent="Controls"]
+[node name="Options" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="AutoAccelerate" type="CheckButton" parent="Options"]
 offset_left = 58.0
 offset_top = 238.0
 offset_right = 168.0
@@ -137,3 +182,82 @@ offset_bottom = 264.0
 theme_override_font_sizes/font_size = 8
 text = "AUTO GAS"
 button_pressed = false
+
+[node name="Overlay" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HintOverlay" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Backdrop" type="ColorRect" parent="HintOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 2
+
+[node name="Title" type="Label" parent="HintOverlay"]
+offset_left = 12.0
+offset_top = 120.0
+offset_right = 212.0
+offset_bottom = 142.0
+theme_override_colors/font_color = Color(1, 0.824, 0.247, 1)
+theme_override_font_sizes/font_size = 12
+text = "SWIPE CONTROLS"
+horizontal_alignment = 1
+
+[node name="Steer" type="Label" parent="HintOverlay"]
+offset_left = 12.0
+offset_top = 152.0
+offset_right = 212.0
+offset_bottom = 172.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 11
+text = "◄ SWIPE ►  STEER"
+horizontal_alignment = 1
+
+[node name="Jump" type="Label" parent="HintOverlay"]
+offset_left = 12.0
+offset_top = 176.0
+offset_right = 212.0
+offset_bottom = 196.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 11
+text = "▲ SWIPE UP  JUMP"
+horizontal_alignment = 1
+
+[node name="Pedals" type="Label" parent="HintOverlay"]
+offset_left = 12.0
+offset_top = 200.0
+offset_right = 212.0
+offset_bottom = 220.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 11
+text = "▲ GAS        ▼ BRAKE"
+horizontal_alignment = 1
+
+[node name="Dismiss" type="Label" parent="HintOverlay"]
+offset_left = 12.0
+offset_top = 226.0
+offset_right = 212.0
+offset_bottom = 244.0
+theme_override_colors/font_color = Color(0.7, 0.72, 0.78, 1)
+theme_override_font_sizes/font_size = 9
+text = "TAP TO DISMISS"
+horizontal_alignment = 1

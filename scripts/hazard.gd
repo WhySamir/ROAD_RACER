@@ -1,6 +1,5 @@
 extends Area2D
 
-const OFFSCREEN_Y: float = 460.0
 
 @export var hazard_type: String = "oil"
 
@@ -12,7 +11,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	global_position.y += GameState.speed * delta
-	if global_position.y > OFFSCREEN_Y:
+	if global_position.y > ScreenMetrics.view_size.y + 80.0:
 		queue_free()
 
 func _on_area_entered(area: Area2D) -> void:

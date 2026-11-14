@@ -11,6 +11,7 @@ extends CanvasLayer
 @onready var _life_icons: Array[TextureRect] = [$LivesMargin/LivesBar/Life1, $LivesMargin/LivesBar/Life2, $LivesMargin/LivesBar/Life3, $LivesMargin/LivesBar/Life4, $LivesMargin/LivesBar/Life5]
 @onready var _mode_level_label: Label = $Panel/ModeLevel
 @onready var _jump_bar: ColorRect = $Panel/JumpBar/Fill
+@onready var _jump_container: Control = $Panel/JumpBar
 @onready var _jump_glow: ColorRect = $Panel/JumpBar/Glow
 @onready var _jump_label: Label = $Panel/JumpBar/Value
 @onready var _message: Label = $Message
@@ -19,6 +20,9 @@ extends CanvasLayer
 @onready var _pause_button: Button = $PauseButton
 @onready var _pause_overlay: Control = $PauseOverlay
 @onready var _pause_audio_button: Button = $PauseOverlay/Audio
+@onready var _pause_controls_button: Button = $PauseOverlay/Controls
+@onready var _pause_hand_button: Button = $PauseOverlay/Hand
+@onready var _pause_auto_gas_button: Button = $PauseOverlay/AutoGas
 @onready var _game_over_info: Control = $GameOverInfo
 @onready var _game_over_mode: Label = $GameOverInfo/ModeLevel
 @onready var _game_over_score: Label = $GameOverInfo/Score
@@ -26,7 +30,32 @@ extends CanvasLayer
 @onready var _game_over_best: Label = $GameOverInfo/Best
 @onready var _new_best: Label = $GameOverInfo/NewBest
 @onready var _life_popup: Label = $LifePopup
+@onready var _pause_title: Label = $PauseOverlay/Title
+@onready var _pause_buttons: Array[Button] = [
+	$PauseOverlay/Resume,
+	$PauseOverlay/Menu,
+	$PauseOverlay/Audio,
+	$PauseOverlay/Controls,
+	$PauseOverlay/Hand,
+	$PauseOverlay/AutoGas,
+	$PauseOverlay/Retry,
+]
 
+const LABEL_WIDTH: float = 64.0
+const INFO_WIDTH: float = 176.0
+const INFO_ROW_HEIGHT: float = 18.0
+const INFO_ROW_GAP: float = 4.0
+const INFO_TOP_RATIO: float = 0.30
+const ACTION_WIDTH: float = 150.0
+const ACTION_HEIGHT: float = 34.0
+const ACTION_GAP: float = 6.0
+const PAUSE_WIDTH: float = 176.0
+const PAUSE_MAX_HEIGHT: float = 320.0
+const PAUSE_SIDE_MARGIN: float = 12.0
+const PAUSE_TITLE_HEIGHT: float = 32.0
+const PAUSE_ROW_MIN_HEIGHT: float = 20.0
+const PAUSE_ROW_MAX_HEIGHT: float = 32.0
+const PAUSE_ROW_GAP: float = 4.0
 const LIFE_SHAKE_OFFSET: float = 3.0
 const LIFE_SHAKE_STEPS: int = 4
 const LIFE_POP_SCALE: float = 1.3
@@ -57,13 +86,21 @@ func _ready() -> void:
 	$PauseOverlay/Resume.pressed.connect(_on_resume_pressed)
 	$PauseOverlay/Menu.pressed.connect(_on_menu_pressed)
 	$PauseOverlay/Audio.pressed.connect(_on_pause_audio_pressed)
+	$PauseOverlay/Controls.pressed.connect(_toggle_control_scheme)
+	$PauseOverlay/Hand.pressed.connect(_toggle_hand)
+	$PauseOverlay/AutoGas.pressed.connect(_toggle_auto_gas)
+	$PauseOverlay/Retry.pressed.connect(_on_pause_retry_pressed)
 	_on_score_changed(GameState.score)
 	_on_best_changed(GameState.high_score)
 	_on_distance_changed(GameState.distance)
 	_on_speed_changed(GameState.speed)
 	_on_fuel_changed(GameState.fuel)
 	_on_phase_changed(GameState.game_phase)
+	ScreenMetrics.changed.connect(_layout_hud)
+	_layout_hud()
 	_refresh_audio_button()
+	_refresh_touch_settings()
+	_refresh_auto_gas()
 	_on_jump_meter_changed(GameState.jump_meter)
 	_on_jump_charges_changed(GameState.jump_charges)
 	_apply_safe_area()
@@ -85,7 +122,7 @@ func _on_speed_changed(value: float) -> void:
 
 func _on_fuel_changed(value: float) -> void:
 	var ratio: float = clampf(value / 100.0, 0.0, 1.0)
-	_fuel_bar.size.x = 80.0 * ratio
+	_fuel_bar.size.x = 48.0 * ratio
 	_fuel_bar.color = Color("55cc66") if value > 50.0 else (Color("e6c84f") if value > 20.0 else Color("e64f4f"))
 	_fuel_value.text = "FUEL %03d" % int(value)
 
@@ -95,7 +132,7 @@ func _on_phase_changed(value: String) -> void:
 	_countdown.visible = value == "COUNTDOWN"
 	_game_over_actions.visible = value == "GAME_OVER"
 	_pause_button.visible = value == "PLAYING" and not get_tree().paused
-	_game_over_info.visible = false
+	_game_over_info.visible = value == "GAME_OVER"
 	if value == "GAME_OVER":
 		_game_over_mode.text = "%s · %s" % [DifficultyConfig.mode_name(GameState.mode), DifficultyConfig.level_name(GameState.level)]
 		_game_over_score.text = "SCORE %d" % GameState.score
@@ -112,7 +149,7 @@ func _on_countdown_changed(value: int) -> void:
 
 func _on_jump_meter_changed(value: float) -> void:
 	var ratio: float = clampf(value / 100.0, 0.0, 1.0)
-	_jump_bar.size.x = 60.0 * ratio
+	_jump_bar.size.x = 48.0 * ratio
 	_jump_glow.visible = GameState.jump_charges > 0
 	_jump_label.text = "JUMP %d/%d" % [GameState.jump_charges, GameState.MAX_JUMP_CHARGES]
 
@@ -151,10 +188,78 @@ func _on_extra_life_gained(_value: int) -> void:
 	)
 
 func _apply_safe_area() -> void:
-	var safe_top: float = 0.0
-	if OS.has_feature("mobile"):
-		safe_top = float(DisplayServer.get_display_safe_area().position.y)
-	_lives_margin.add_theme_constant_override("margin_top", int(6.0 + safe_top))
+	_lives_margin.add_theme_constant_override("margin_top", int(6.0 + ScreenMetrics.safe_top))
+
+func _layout_hud() -> void:
+	_apply_safe_area()
+	var view: Vector2 = ScreenMetrics.view_size
+	var width: float = view.x
+	var safe_top: float = ScreenMetrics.safe_top
+	var safe_right: float = ScreenMetrics.safe_right
+	var safe_left: float = ScreenMetrics.safe_left
+	var center_x: float = width * 0.5
+	var center_left: float = center_x - LABEL_WIDTH * 0.5
+	var right_x: float = width - safe_right - LABEL_WIDTH
+	# Keep center labels from colliding with right labels on narrow phones.
+	if center_left + LABEL_WIDTH > right_x - 8.0:
+		center_left = right_x - LABEL_WIDTH - 8.0
+	center_left = maxf(center_left, safe_left + 6.0)
+	_score_label.position = Vector2(center_left, 6.0 + safe_top)
+	_best_label.position = Vector2(center_left, 20.0 + safe_top)
+	_mode_level_label.position = Vector2(center_left, 34.0 + safe_top)
+	_distance_label.position = Vector2(right_x, 6.0 + safe_top)
+	_speed_label.position = Vector2(right_x, 24.0 + safe_top)
+	_jump_container.position = Vector2(right_x, 42.0 + safe_top)
+	_jump_container.size = Vector2(70.0, 24.0)
+	_jump_label.position = Vector2(right_x, 64.0 + safe_top)
+	_fuel_group.position = Vector2(6.0 + safe_left, 52.0 + safe_top)
+	_life_popup.position = Vector2(6.0 + safe_left, 78.0 + safe_top)
+	_pause_button.position = Vector2(width - safe_right - 32.0, 6.0 + safe_top)
+	_pause_button.size = Vector2(32.0, 28.0)
+	for label: Label in [_score_label, _best_label, _mode_level_label, _distance_label, _speed_label, _jump_label]:
+		label.size = Vector2(LABEL_WIDTH, 14.0)
+	_layout_center_overlays(view, safe_top)
+
+## Places every centered overlay against the current canvas height so tall
+## phones do not leave the menu text or buttons floating in the middle.
+func _layout_center_overlays(view: Vector2, safe_top: float) -> void:
+	var center_x: float = view.x * 0.5
+	var message_top: float = maxf(view.y * 0.40, safe_top + 110.0)
+	_message.position = Vector2(center_x - INFO_WIDTH * 0.5, message_top)
+	_message.size = Vector2(INFO_WIDTH, 56.0)
+	_countdown.position = Vector2(center_x - 32.0, message_top - 30.0)
+	_countdown.size = Vector2(64.0, 70.0)
+	var info_top: float = maxf(view.y * INFO_TOP_RATIO, safe_top + 110.0)
+	var row_y: float = info_top
+	for label: Label in [_game_over_mode, _game_over_score, _game_over_distance, _game_over_best, _new_best]:
+		label.position = Vector2(center_x - INFO_WIDTH * 0.5, row_y)
+		label.size = Vector2(INFO_WIDTH, INFO_ROW_HEIGHT)
+		row_y += INFO_ROW_HEIGHT + INFO_ROW_GAP
+	var actions_top: float = row_y + 12.0
+	var retry_button: Button = $GameOverActions/Retry
+	var menu_button: Button = $GameOverActions/Menu
+	retry_button.position = Vector2(center_x - ACTION_WIDTH * 0.5, actions_top)
+	retry_button.size = Vector2(ACTION_WIDTH, ACTION_HEIGHT)
+	menu_button.position = Vector2(center_x - ACTION_WIDTH * 0.5, actions_top + ACTION_HEIGHT + ACTION_GAP)
+	menu_button.size = Vector2(ACTION_WIDTH, ACTION_HEIGHT)
+	_layout_pause_overlay(view, safe_top)
+
+func _layout_pause_overlay(view: Vector2, safe_top: float) -> void:
+	var available_height: float = view.y - safe_top - ScreenMetrics.safe_bottom - 40.0
+	var panel_size: Vector2 = Vector2(minf(PAUSE_WIDTH, view.x - PAUSE_SIDE_MARGIN * 2.0), minf(PAUSE_MAX_HEIGHT, available_height))
+	_pause_overlay.position = Vector2((view.x - panel_size.x) * 0.5, safe_top + (available_height - panel_size.y) * 0.5 + 20.0)
+	_pause_overlay.size = panel_size
+	_pause_title.position = Vector2(PAUSE_SIDE_MARGIN, 8.0)
+	_pause_title.size = Vector2(panel_size.x - PAUSE_SIDE_MARGIN * 2.0, PAUSE_TITLE_HEIGHT - 8.0)
+	var rows: int = _pause_buttons.size()
+	var content_top: float = PAUSE_TITLE_HEIGHT
+	var content_height: float = panel_size.y - content_top - PAUSE_SIDE_MARGIN
+	var row_height: float = clampf((content_height - PAUSE_ROW_GAP * float(rows - 1)) / float(rows), PAUSE_ROW_MIN_HEIGHT, PAUSE_ROW_MAX_HEIGHT)
+	var button_width: float = panel_size.x - PAUSE_SIDE_MARGIN * 2.0
+	for index: int in rows:
+		var button: Button = _pause_buttons[index]
+		button.position = Vector2(PAUSE_SIDE_MARGIN, content_top + float(index) * (row_height + PAUSE_ROW_GAP))
+		button.size = Vector2(button_width, row_height)
 
 func _set_hearts_immediately(lives_value: int, visible_slots: int) -> void:
 	_kill_all_heart_tweens()
@@ -244,7 +349,7 @@ func _on_pause_pressed() -> void:
 	AudioManager.set_paused(true)
 	_pause_button.visible = false
 	_pause_overlay.visible = true
-	$PauseOverlay/Resume.grab_focus()
+	$PauseOverlay/Retry.grab_focus()
 
 func _on_resume_pressed() -> void:
 	AudioManager.play(&"click")
@@ -253,6 +358,12 @@ func _on_resume_pressed() -> void:
 	AudioManager.set_paused(false)
 	_pause_button.visible = true
 
+func _on_pause_retry_pressed() -> void:
+	AudioManager.play(&"click")
+	AudioManager.stop_all()
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
 func _on_pause_audio_pressed() -> void:
 	AudioManager.play(&"click")
 	AudioManager.set_muted(not GameState.muted)
@@ -260,3 +371,24 @@ func _on_pause_audio_pressed() -> void:
 
 func _refresh_audio_button() -> void:
 	_pause_audio_button.text = "SFX OFF" if GameState.muted else "SFX ON"
+
+func _toggle_control_scheme() -> void:
+	AudioManager.play(&"click")
+	GameState.set_control_scheme(GameState.ControlScheme.BUTTONS if GameState.control_scheme == GameState.ControlScheme.SWIPE else GameState.ControlScheme.SWIPE)
+	_refresh_touch_settings()
+
+func _toggle_hand() -> void:
+	AudioManager.play(&"click")
+	GameState.set_hand_side(GameState.HandSide.LEFT if GameState.hand_side == GameState.HandSide.RIGHT else GameState.HandSide.RIGHT)
+	_refresh_touch_settings()
+
+func _refresh_touch_settings() -> void:
+	_pause_controls_button.text = "CONTROLS: SWIPE" if GameState.control_scheme == GameState.ControlScheme.SWIPE else "CONTROLS: BUTTONS"
+	_pause_hand_button.text = "HAND: RIGHT" if GameState.hand_side == GameState.HandSide.RIGHT else "HAND: LEFT"
+
+func _toggle_auto_gas() -> void:
+	GameState.set_auto_accelerate(not GameState.auto_accelerate)
+	_refresh_auto_gas()
+
+func _refresh_auto_gas() -> void:
+	_pause_auto_gas_button.text = "AUTO GAS: ON" if GameState.auto_accelerate else "AUTO GAS: OFF"
