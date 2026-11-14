@@ -1,12 +1,6 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/touch_controls.gd" id="1_touch"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_left"]
-size = Vector2(56, 56)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_right"]
-size = Vector2(56, 56)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_jump"]
 size = Vector2(64, 64)
@@ -21,15 +15,6 @@ size = Vector2(56, 42)
 layer = 0
 script = ExtResource("1_touch")
 
-[node name="ControlsMargin" type="MarginContainer" parent="."]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
 [node name="SwipeArea" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 15
@@ -37,23 +22,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
-
-[node name="GasButton" type="Control" parent="SwipeArea"]
-layout_mode = 0
-offset_left = 136.0
-offset_top = 276.0
-offset_right = 200.0
-offset_bottom = 332.0
-mouse_filter = 0
-
-[node name="BrakeButton" type="Control" parent="SwipeArea"]
-layout_mode = 0
-offset_left = 136.0
-offset_top = 340.0
-offset_right = 200.0
-offset_bottom = 396.0
-mouse_filter = 0
+mouse_filter = 2
 
 [node name="ButtonScheme" type="Control" parent="."]
 visible = false
@@ -64,52 +33,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-
-[node name="LeftBack" type="ColorRect" parent="ButtonScheme"]
-offset_left = 8.0
-offset_top = 336.0
-offset_right = 64.0
-offset_bottom = 392.0
-color = Color(0.1, 0.25, 0.3, 0.65)
-mouse_filter = 2
-
-[node name="RightBack" type="ColorRect" parent="ButtonScheme"]
-offset_left = 70.0
-offset_top = 336.0
-offset_right = 126.0
-offset_bottom = 392.0
-color = Color(0.1, 0.25, 0.3, 0.65)
-mouse_filter = 2
-
-[node name="Left" type="TouchScreenButton" parent="ButtonScheme"]
-position = Vector2(36, 364)
-shape = SubResource("RectangleShape2D_left")
-shape_centered = true
-action = "steer_left"
-
-[node name="Label" type="Label" parent="ButtonScheme/Left"]
-offset_left = -18.0
-offset_top = -10.0
-offset_right = 18.0
-offset_bottom = 10.0
-theme_override_font_sizes/font_size = 12
-text = "<"
-horizontal_alignment = 1
-
-[node name="Right" type="TouchScreenButton" parent="ButtonScheme"]
-position = Vector2(98, 364)
-shape = SubResource("RectangleShape2D_right")
-shape_centered = true
-action = "steer_right"
-
-[node name="Label" type="Label" parent="ButtonScheme/Right"]
-offset_left = -18.0
-offset_top = -10.0
-offset_right = 18.0
-offset_bottom = 10.0
-theme_override_font_sizes/font_size = 12
-text = ">"
-horizontal_alignment = 1
 
 [node name="Jump" type="TouchScreenButton" parent="ButtonScheme"]
 position = Vector2(184, 344)
@@ -175,22 +98,13 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="AutoAccelerate" type="CheckButton" parent="Options"]
-offset_left = 58.0
+offset_left = 52.0
 offset_top = 238.0
-offset_right = 168.0
+offset_right = 172.0
 offset_bottom = 264.0
 theme_override_font_sizes/font_size = 8
 text = "AUTO GAS"
 button_pressed = false
-
-[node name="Overlay" type="Control" parent="."]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
 
 [node name="HintOverlay" type="Control" parent="."]
 visible = false
@@ -219,7 +133,7 @@ offset_right = 212.0
 offset_bottom = 142.0
 theme_override_colors/font_color = Color(1, 0.824, 0.247, 1)
 theme_override_font_sizes/font_size = 12
-text = "SWIPE CONTROLS"
+text = "TOUCH CONTROLS"
 horizontal_alignment = 1
 
 [node name="Steer" type="Label" parent="HintOverlay"]
@@ -228,8 +142,8 @@ offset_top = 152.0
 offset_right = 212.0
 offset_bottom = 172.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 11
-text = "◄ SWIPE ►  STEER"
+theme_override_font_sizes/font_size = 10
+text = "TOUCH LEFT / RIGHT SIDE TO STEER"
 horizontal_alignment = 1
 
 [node name="Jump" type="Label" parent="HintOverlay"]
@@ -239,7 +153,7 @@ offset_right = 212.0
 offset_bottom = 196.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 11
-text = "▲ SWIPE UP  JUMP"
+text = "SWIPE UP  JUMP"
 horizontal_alignment = 1
 
 [node name="Pedals" type="Label" parent="HintOverlay"]

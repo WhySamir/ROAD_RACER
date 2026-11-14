@@ -1,11 +1,12 @@
 extends CanvasLayer
 
-## Touch/mouse input for mobile. Both control schemes emit the shared InputMap
-## actions (steer_left, steer_right, accelerate, brake, jump) so player.gd only
-## ever reads Input actions. Layout is recomputed from ScreenMetrics.view_size so
-## controls stay pinned to the bottom corners of any phone or tablet canvas.
+## Touch/mouse input for mobile.
+##
+## Steering is screen-wide: touching or holding the left half of the screen
+## steers left, the right half steers right, and dragging across the middle
+## switches sides. Multiple fingers work (steer left while holding gas), and a
+## touch that starts on the gas, brake or jump button never steers.
 
-const SWIPE_DEAD_ZONE_PX: float = 14.0
 const SWIPE_JUMP_DISTANCE_PX: float = 40.0
 const JUMP_HOLD_FRAMES: int = 2
 const GLOW_MIN_ALPHA: float = 0.45
@@ -13,32 +14,30 @@ const GLOW_MAX_ALPHA: float = 1.0
 const GLOW_PULSE_SPEED: float = 7.0
 const HINT_DURATION: float = 3.0
 
-const STEER_LEFT_OFFSET: float = 36.0
-const STEER_RIGHT_OFFSET: float = 98.0
-const STEER_BOTTOM_OFFSET: float = 36.0
-const STEER_BUTTON_SIZE: float = 56.0
 const JUMP_RIGHT_OFFSET: float = 40.0
 const JUMP_BOTTOM_OFFSET: float = 56.0
 const GAS_OFFSET: Vector2 = Vector2(0.0, -78.0)
 const BRAKE_OFFSET: Vector2 = Vector2(-117.0, -44.0)
 const PEDAL_HALF_SIZE: Vector2 = Vector2(28.0, 21.0)
-const SWIPE_ZONE_PADDING: float = 8.0
+const JUMP_HALF_SIZE: Vector2 = Vector2(32.0, 32.0)
+const PEDAL_ZONE_PADDING: float = 8.0
+const JUMP_ZONE_PADDING: float = 4.0
 
 const HINT_TOP_RATIO: float = 0.22
 const HINT_ROW_HEIGHT: float = 24.0
 const HINT_SIDE_MARGIN: float = 12.0
 const OPTIONS_Y_RATIO: float = 0.62
-const OPTIONS_SIZE: Vector2 = Vector2(110.0, 26.0)
+const OPTIONS_SIZE: Vector2 = Vector2(120.0, 26.0)
+
+const LEFT_SIDE: int = -1
+const NO_SIDE: int = 0
+const RIGHT_SIDE: int = 1
 
 @onready var _swipe_area: Control = $SwipeArea
 @onready var _button_scheme: Control = $ButtonScheme
-@onready var _steer_left: TouchScreenButton = $ButtonScheme/Left
-@onready var _steer_right: TouchScreenButton = $ButtonScheme/Right
 @onready var _jump: TouchScreenButton = $ButtonScheme/Jump
 @onready var _gas: TouchScreenButton = $ButtonScheme/Gas
 @onready var _brake: TouchScreenButton = $ButtonScheme/Brake
-@onready var _left_back: ColorRect = $ButtonScheme/LeftBack
-@onready var _right_back: ColorRect = $ButtonScheme/RightBack
 @onready var _jump_glow: ColorRect = $ButtonScheme/Jump/Glow
 @onready var _auto_toggle: CheckButton = $Options/AutoAccelerate
 @onready var _options: Control = $Options
@@ -53,11 +52,14 @@ const OPTIONS_SIZE: Vector2 = Vector2(110.0, 26.0)
 
 var auto_accelerate: bool = false
 
+var _touch_sides: Dictionary = {}
+var _touch_pedals: Dictionary = {}
+var _left_holds: int = 0
+var _right_holds: int = 0
 var _swipe_index: int = -1
 var _swipe_start: Vector2 = Vector2.ZERO
 var _swipe_jump_used: bool = false
-var _swipe_accelerating: bool = false
-var _swipe_braking: bool = false
+var _jump_zone: Rect2 = Rect2()
 var _gas_zone: Rect2 = Rect2()
 var _brake_zone: Rect2 = Rect2()
 var _jump_hold_frames: int = 0
@@ -94,23 +96,20 @@ func _process(delta: float) -> void:
 	_update_auto_accelerate()
 
 func _input(event: InputEvent) -> void:
-	if not _swipe_area.visible:
+	if get_tree().paused:
 		return
 	if event is InputEventScreenTouch:
 		var touch: InputEventScreenTouch = event
 		if touch.pressed:
-			if _swipe_index != -1:
-				return
 			if _hint_overlay.visible:
 				_dismiss_hint()
 				return
-			_begin_swipe(touch.index, touch.position)
-		elif touch.index == _swipe_index:
-			_end_swipe()
+			_begin_touch(touch.index, touch.position)
+		else:
+			_end_touch(touch.index)
 	elif event is InputEventScreenDrag:
 		var drag: InputEventScreenDrag = event
-		if drag.index == _swipe_index:
-			_update_swipe(drag.position)
+		_update_touch(drag.index, drag.position)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
@@ -123,6 +122,113 @@ func _notification(what: int) -> void:
 			_paused_by_focus = false
 			get_tree().paused = false
 			AudioManager.set_paused(false)
+	elif what == NOTIFICATION_PAUSED:
+		# A finger held during pause never sends its release, so drop all holds.
+		_clear_touches()
+
+func _begin_touch(index: int, position: Vector2) -> void:
+	if _touch_sides.has(index) or _touch_pedals.has(index):
+		return
+	if _is_swipe_scheme():
+		if _gas_zone.has_point(position):
+			_hold_pedal(index, &"accelerate")
+			return
+		if _brake_zone.has_point(position):
+			_hold_pedal(index, &"brake")
+			return
+	elif _jump_zone.has_point(position) or _gas_zone.has_point(position) or _brake_zone.has_point(position):
+		# The on-screen pedals and jump button own these touches.
+		return
+	_begin_steer(index, position)
+
+func _update_touch(index: int, position: Vector2) -> void:
+	if _touch_sides.has(index):
+		_apply_steer(index, position)
+		if index == _swipe_index:
+			_check_swipe_jump(position)
+
+func _end_touch(index: int) -> void:
+	if _touch_sides.has(index):
+		_set_steer_side(index, NO_SIDE)
+		_touch_sides.erase(index)
+	if _touch_pedals.has(index):
+		Input.action_release(_touch_pedals[index] as StringName)
+		_touch_pedals.erase(index)
+	if index == _swipe_index:
+		_swipe_index = -1
+		_swipe_jump_used = false
+
+func _begin_steer(index: int, position: Vector2) -> void:
+	_touch_sides[index] = NO_SIDE
+	_apply_steer(index, position)
+	# The first finger owns the swipe-up gesture; extra fingers only steer.
+	if _is_swipe_scheme() and _swipe_index == -1:
+		_swipe_index = index
+		_swipe_start = position
+		_swipe_jump_used = false
+
+func _apply_steer(index: int, position: Vector2) -> void:
+	var side: int = LEFT_SIDE if position.x < ScreenMetrics.view_size.x * 0.5 else RIGHT_SIDE
+	if int(_touch_sides.get(index, NO_SIDE)) == side:
+		return
+	_set_steer_side(index, side)
+
+## Ref-counted so two fingers on the same side keep steering until both lift.
+func _set_steer_side(index: int, side: int) -> void:
+	var previous: int = int(_touch_sides.get(index, NO_SIDE))
+	if previous == side:
+		return
+	if previous == LEFT_SIDE:
+		_left_holds = maxi(_left_holds - 1, 0)
+	elif previous == RIGHT_SIDE:
+		_right_holds = maxi(_right_holds - 1, 0)
+	_touch_sides[index] = side
+	if side == LEFT_SIDE:
+		_left_holds += 1
+	elif side == RIGHT_SIDE:
+		_right_holds += 1
+	_sync_steer_actions()
+
+func _sync_steer_actions() -> void:
+	if _left_holds > 0:
+		Input.action_press("steer_left")
+	else:
+		Input.action_release("steer_left")
+	if _right_holds > 0:
+		Input.action_press("steer_right")
+	else:
+		Input.action_release("steer_right")
+
+func _check_swipe_jump(position: Vector2) -> void:
+	if _swipe_jump_used:
+		return
+	if _swipe_start.y - position.y < SWIPE_JUMP_DISTANCE_PX:
+		return
+	_swipe_jump_used = true
+	Input.action_press("jump")
+	_jump_hold_frames = JUMP_HOLD_FRAMES
+
+func _hold_pedal(index: int, action: StringName) -> void:
+	if _touch_pedals.has(index):
+		return
+	_touch_pedals[index] = action
+	Input.action_press(action)
+
+func _clear_touches() -> void:
+	for index: int in _touch_sides.keys():
+		_set_steer_side(index, NO_SIDE)
+	_touch_sides.clear()
+	for index: int in _touch_pedals.keys():
+		Input.action_release(_touch_pedals[index] as StringName)
+	_touch_pedals.clear()
+	_left_holds = 0
+	_right_holds = 0
+	_sync_steer_actions()
+	_swipe_index = -1
+	_swipe_jump_used = false
+	if _jump_hold_frames > 0:
+		_jump_hold_frames = 0
+		Input.action_release("jump")
 
 func _update_auto_accelerate() -> void:
 	# Braking overrides auto-gas so the brake button stays usable.
@@ -134,54 +240,13 @@ func _update_auto_accelerate() -> void:
 		Input.action_release("accelerate")
 		_auto_action_pressed = false
 
-func _begin_swipe(index: int, position: Vector2) -> void:
-	_swipe_index = index
-	_swipe_start = position
-	_swipe_jump_used = false
-	_swipe_accelerating = false
-	_swipe_braking = false
-	if _gas_zone.has_point(position) and not Input.is_action_pressed("accelerate"):
-		_swipe_accelerating = true
-		Input.action_press("accelerate")
-	elif _brake_zone.has_point(position):
-		_swipe_braking = true
-		Input.action_press("brake")
-
-func _update_swipe(position: Vector2) -> void:
-	var horizontal: float = position.x - _swipe_start.x
-	if horizontal <= -SWIPE_DEAD_ZONE_PX:
-		Input.action_press("steer_left")
-		Input.action_release("steer_right")
-	elif horizontal >= SWIPE_DEAD_ZONE_PX:
-		Input.action_press("steer_right")
-		Input.action_release("steer_left")
-	else:
-		Input.action_release("steer_left")
-		Input.action_release("steer_right")
-	if not _swipe_jump_used and _swipe_start.y - position.y >= SWIPE_JUMP_DISTANCE_PX:
-		_swipe_jump_used = true
-		Input.action_press("jump")
-		_jump_hold_frames = JUMP_HOLD_FRAMES
-
-func _end_swipe() -> void:
-	_swipe_index = -1
-	_swipe_jump_used = false
-	Input.action_release("steer_left")
-	Input.action_release("steer_right")
-	if _swipe_accelerating:
-		Input.action_release("accelerate")
-		_swipe_accelerating = false
-	if _swipe_braking:
-		Input.action_release("brake")
-		_swipe_braking = false
-	if _jump_hold_frames > 0:
-		_jump_hold_frames = 0
-		Input.action_release("jump")
+func _is_swipe_scheme() -> bool:
+	return GameState.control_scheme == GameState.ControlScheme.SWIPE
 
 func _refresh_layout() -> void:
-	var swipe_scheme: bool = GameState.control_scheme == GameState.ControlScheme.SWIPE
+	var swipe_scheme: bool = _is_swipe_scheme()
 	if _swipe_area.visible != swipe_scheme:
-		_end_swipe()
+		_clear_touches()
 	_swipe_area.visible = swipe_scheme
 	_button_scheme.visible = not swipe_scheme
 	_layout_buttons()
@@ -191,37 +256,24 @@ func _refresh_layout() -> void:
 func _layout_buttons() -> void:
 	var view: Vector2 = ScreenMetrics.view_size
 	var bottom: float = view.y - ScreenMetrics.safe_bottom
-	var steer_y: float = bottom - STEER_BOTTOM_OFFSET
 	var jump: Vector2
-	var steer_left: Vector2
-	var steer_right: Vector2
 	var brake_offset: Vector2 = BRAKE_OFFSET
 	var left_handed: bool = GameState.hand_side == GameState.HandSide.LEFT
 	if left_handed:
-		# Mirror the whole cluster: pedals bottom-left, steering pad bottom-right.
 		jump = Vector2(ScreenMetrics.safe_left + JUMP_RIGHT_OFFSET, bottom - JUMP_BOTTOM_OFFSET)
-		steer_left = Vector2(view.x - ScreenMetrics.safe_right - STEER_RIGHT_OFFSET, steer_y)
-		steer_right = Vector2(view.x - ScreenMetrics.safe_right - STEER_LEFT_OFFSET, steer_y)
 		brake_offset = Vector2(-BRAKE_OFFSET.x, BRAKE_OFFSET.y)
 	else:
 		jump = Vector2(view.x - ScreenMetrics.safe_right - JUMP_RIGHT_OFFSET, bottom - JUMP_BOTTOM_OFFSET)
-		steer_left = Vector2(ScreenMetrics.safe_left + STEER_LEFT_OFFSET, steer_y)
-		steer_right = Vector2(ScreenMetrics.safe_left + STEER_RIGHT_OFFSET, steer_y)
 	var gas: Vector2 = jump + GAS_OFFSET
 	var brake: Vector2 = jump + brake_offset
-	_steer_left.position = steer_left
-	_steer_right.position = steer_right
 	_jump.position = jump
 	_gas.position = gas
 	_brake.position = brake
-	_left_back.position = steer_left - Vector2(STEER_BUTTON_SIZE, STEER_BUTTON_SIZE) * 0.5
-	_left_back.size = Vector2(STEER_BUTTON_SIZE, STEER_BUTTON_SIZE)
-	_right_back.position = steer_right - Vector2(STEER_BUTTON_SIZE, STEER_BUTTON_SIZE) * 0.5
-	_right_back.size = Vector2(STEER_BUTTON_SIZE, STEER_BUTTON_SIZE)
-	# Swipe zones follow the pedals so both schemes share the same muscle memory.
-	var zone_size: Vector2 = PEDAL_HALF_SIZE * 2.0 + Vector2(SWIPE_ZONE_PADDING, SWIPE_ZONE_PADDING) * 2.0
-	_gas_zone = Rect2(gas - zone_size * 0.5, zone_size)
-	_brake_zone = Rect2(brake - zone_size * 0.5, zone_size)
+	var pedal_zone_size: Vector2 = PEDAL_HALF_SIZE * 2.0 + Vector2(PEDAL_ZONE_PADDING, PEDAL_ZONE_PADDING) * 2.0
+	_gas_zone = Rect2(gas - pedal_zone_size * 0.5, pedal_zone_size)
+	_brake_zone = Rect2(brake - pedal_zone_size * 0.5, pedal_zone_size)
+	var jump_zone_size: Vector2 = JUMP_HALF_SIZE * 2.0 + Vector2(JUMP_ZONE_PADDING, JUMP_ZONE_PADDING) * 2.0
+	_jump_zone = Rect2(jump - jump_zone_size * 0.5, jump_zone_size)
 
 func _layout_hint() -> void:
 	var view: Vector2 = ScreenMetrics.view_size
@@ -247,8 +299,8 @@ func _on_jump_charges_changed(value: int) -> void:
 func _on_phase_changed(value: String) -> void:
 	_options.visible = value == "MENU"
 	if value != "PLAYING":
-		_end_swipe()
-	if _swipe_area.visible and value == "PLAYING" and not GameState.seen_swipe_hint:
+		_clear_touches()
+	if _is_swipe_scheme() and value == "PLAYING" and not GameState.seen_swipe_hint:
 		_show_hint()
 	else:
 		_hint_overlay.visible = false
